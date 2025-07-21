@@ -1,5 +1,12 @@
 import React, { useState } from 'react';
-import { Plus, Search, Filter, Trash2, Upload, X, Star, Award, Gem, Palette, Ruler, Weight, FileText, Shield } from 'lucide-react';
+import { Plus, Search, Filter, Trash2, Upload, X, Star, Award, Gem, Palette, Ruler, Weight, FileText, Shield, DollarSign, Settings, Eye, Edit } from 'lucide-react';
+
+interface PricingTier {
+  metalQuality: string;
+  basePrice: number;
+  makingCharges: number;
+  gstRate: number;
+}
 
 interface JewelryProduct {
   id: number;
@@ -15,7 +22,8 @@ interface JewelryProduct {
   sku: string;
   shape: string;
   category: string;
-  price: number;
+  subCategory: string;
+  pricingTiers: PricingTier[];
   stock: number;
   description: string;
   diamondCertification: string;
@@ -25,13 +33,31 @@ interface JewelryProduct {
   rating: number;
   customizable: boolean;
   createdAt: string;
+  occasion: string;
+  gender: string;
+  collection: string;
+  stoneClarity: string;
+  stoneColor: string;
+  stoneCut: string;
+  settingType: string;
+  bandWidth: number;
+  totalDiamonds: number;
+  warranty: string;
+  returnPolicy: string;
+  tags: string[];
 }
 
 const Products: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedSubCategory, setSelectedSubCategory] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
   const [activeTab, setActiveTab] = useState('basic');
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
+  const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [viewingProduct, setViewingProduct] = useState<any>(null);
   
   const [products, setProducts] = useState<JewelryProduct[]>([
     {
@@ -47,42 +73,34 @@ const Products: React.FC = () => {
       diamondWeight: 1.5,
       sku: 'ESR-18K-001',
       shape: 'Round Brilliant',
-      category: 'Engagement Rings',
-      price: 185000,
+      category: 'Rings',
+      subCategory: 'Engagement Rings',
+      pricingTiers: [
+        { metalQuality: '14K', basePrice: 145000, makingCharges: 15000, gstRate: 3 },
+        { metalQuality: '18K', basePrice: 185000, makingCharges: 18000, gstRate: 3 },
+        { metalQuality: '22K', basePrice: 225000, makingCharges: 22000, gstRate: 3 }
+      ],
       stock: 8,
-      description: 'A timeless solitaire engagement ring featuring a brilliant round diamond set in premium 18K white gold.',
+      description: 'A timeless solitaire engagement ring featuring a brilliant round diamond set in premium white gold.',
       diamondCertification: 'GIA Certified',
       goldCertification: 'BIS Hallmarked',
       sideStones: 'None',
       status: 'Active',
       rating: 4.9,
       customizable: true,
-      createdAt: '2024-01-15'
-    },
-    {
-      id: 2,
-      name: 'Royal Emerald Cut Halo Ring',
-      images: ['https://images.pexels.com/photos/1191531/pexels-photo-1191531.jpeg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop'],
-      metalQuality: '22K',
-      metalColor: 'Yellow Gold',
-      diamondQuality: 'VS1',
-      diamondTone: 'E (Colorless)',
-      sizes: ['5', '6', '7', '8'],
-      metalGrossWeight: 4.1,
-      diamondWeight: 2.0,
-      sku: 'RER-22K-002',
-      shape: 'Emerald Cut',
-      category: 'Engagement Rings',
-      price: 275000,
-      stock: 5,
-      description: 'Luxurious emerald cut diamond surrounded by a halo of smaller diamonds in rich 22K yellow gold.',
-      diamondCertification: 'IGI Certified',
-      goldCertification: 'BIS Hallmarked',
-      sideStones: '24 Round Diamonds (0.48ct)',
-      status: 'Active',
-      rating: 4.8,
-      customizable: true,
-      createdAt: '2024-01-12'
+      createdAt: '2024-01-15',
+      occasion: 'Engagement',
+      gender: 'Women',
+      collection: 'Eternal Collection',
+      stoneClarity: 'VVS1',
+      stoneColor: 'D',
+      stoneCut: 'Excellent',
+      settingType: 'Prong Setting',
+      bandWidth: 2.5,
+      totalDiamonds: 1,
+      warranty: '1 Year',
+      returnPolicy: '30 Days',
+      tags: ['engagement', 'solitaire', 'diamond', 'classic']
     }
   ]);
 
@@ -99,16 +117,39 @@ const Products: React.FC = () => {
     sku: '',
     shape: '',
     category: '',
-    price: 0,
+    subCategory: '',
+    pricingTiers: [],
     stock: 0,
     description: '',
     diamondCertification: '',
     goldCertification: '',
     sideStones: '',
-    customizable: false
+    customizable: false,
+    occasion: '',
+    gender: '',
+    collection: '',
+    stoneClarity: '',
+    stoneColor: '',
+    stoneCut: '',
+    settingType: '',
+    bandWidth: 0,
+    totalDiamonds: 0,
+    warranty: '',
+    returnPolicy: '',
+    tags: [],
+    rating: 0
   });
 
-  const categories = ['All', 'Engagement Rings', 'Wedding Bands', 'Necklaces', 'Earrings', 'Bracelets', 'Pendants', 'Chains'];
+  const categories = {
+    'All': [],
+    'Rings': ['Engagement Rings', 'Wedding Bands', 'Fashion Rings', 'Eternity Rings', 'Promise Rings'],
+    'Necklaces': ['Pendant Necklaces', 'Chain Necklaces', 'Chokers', 'Statement Necklaces', 'Tennis Necklaces'],
+    'Earrings': ['Stud Earrings', 'Drop Earrings', 'Hoop Earrings', 'Chandelier Earrings', 'Huggie Earrings'],
+    'Bracelets': ['Tennis Bracelets', 'Chain Bracelets', 'Bangle Bracelets', 'Charm Bracelets', 'Cuff Bracelets'],
+    'Pendants': ['Diamond Pendants', 'Gemstone Pendants', 'Religious Pendants', 'Initial Pendants', 'Heart Pendants'],
+    'Sets': ['Bridal Sets', 'Necklace Sets', 'Earring Sets', 'Complete Sets']
+  };
+
   const metalQualities = ['14K', '18K', '22K', '24K', 'Platinum', 'Silver'];
   const metalColors = ['Yellow Gold', 'White Gold', 'Rose Gold', 'Platinum', 'Silver'];
   const diamondQualities = ['FL', 'IF', 'VVS1', 'VVS2', 'VS1', 'VS2', 'SI1', 'SI2'];
@@ -116,13 +157,18 @@ const Products: React.FC = () => {
   const shapes = ['Round Brilliant', 'Princess', 'Emerald Cut', 'Asscher', 'Oval', 'Marquise', 'Pear', 'Heart', 'Cushion', 'Radiant'];
   const certifications = ['GIA Certified', 'IGI Certified', 'SSEF Certified', 'Gübelin Certified', 'AGS Certified'];
   const availableSizes = ['4', '4.5', '5', '5.5', '6', '6.5', '7', '7.5', '8', '8.5', '9', '9.5', '10'];
+  const occasions = ['Engagement', 'Wedding', 'Anniversary', 'Birthday', 'Valentine', 'Graduation', 'Everyday'];
+  const genders = ['Women', 'Men', 'Unisex'];
+  const settingTypes = ['Prong Setting', 'Bezel Setting', 'Pave Setting', 'Channel Setting', 'Halo Setting', 'Tension Setting'];
+  const stoneCuts = ['Excellent', 'Very Good', 'Good', 'Fair', 'Poor'];
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          product.shape.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+    const matchesSubCategory = selectedSubCategory === 'All' || product.subCategory === selectedSubCategory;
+    return matchesSearch && matchesCategory && matchesSubCategory;
   });
 
   const handleDelete = (id: number) => {
@@ -131,21 +177,119 @@ const Products: React.FC = () => {
     }
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target;
+    
+    if (type === 'checkbox') {
+      const checked = (e.target as HTMLInputElement).checked;
+      setNewProduct(prev => ({
+        ...prev,
+        [name]: checked
+      }));
+    } else if (type === 'number') {
+      setNewProduct(prev => ({
+        ...prev,
+        [name]: value === '' ? '' : Number(value)
+      }));
+    } else {
+      setNewProduct(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
+  };
+
+  const handleRatingChange = (rating: number) => {
+    setNewProduct(prev => ({
+      ...prev,
+      rating
+    }));
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    setSelectedImages(files);
+    
+    // Create preview URLs
+    const previewUrls = files.map(file => URL.createObjectURL(file));
+    setImagePreviewUrls(previewUrls);
+    
+    // Update form state with file names (in real app, you'd upload to server)
+    setNewProduct(prev => ({
+      ...prev,
+      images: files.map(file => file.name)
+    }));
+  };
+
+  const removeImage = (index: number) => {
+    const newFiles = selectedImages.filter((_, i) => i !== index);
+    const newUrls = imagePreviewUrls.filter((_, i) => i !== index);
+    
+    setSelectedImages(newFiles);
+    setImagePreviewUrls(newUrls);
+    
+    setNewProduct(prev => ({
+      ...prev,
+      images: newFiles.map(file => file.name)
+    }));
+  };
+
+  const handlePricingTierChange = (index: number, field: keyof PricingTier, value: string | number) => {
+    const updatedTiers = [...(newProduct.pricingTiers || [])];
+    updatedTiers[index] = {
+      ...updatedTiers[index],
+      [field]: typeof value === 'string' && field !== 'metalQuality' ? Number(value) : value
+    };
+    setNewProduct(prev => ({
+      ...prev,
+      pricingTiers: updatedTiers
+    }));
+  };
+
+  const addPricingTier = () => {
+    const newTier: PricingTier = {
+      metalQuality: '14K',
+      basePrice: 0,
+      makingCharges: 0,
+      gstRate: 3
+    };
+    setNewProduct(prev => ({
+      ...prev,
+      pricingTiers: [...(prev.pricingTiers || []), newTier]
+    }));
+  };
+
+  const removePricingTier = (index: number) => {
+    const updatedTiers = (newProduct.pricingTiers || []).filter((_, i) => i !== index);
+    setNewProduct(prev => ({
+      ...prev,
+      pricingTiers: updatedTiers
+    }));
+  };
+
   const handleAddProduct = () => {
-    if (!newProduct.name || !newProduct.sku || !newProduct.category || !newProduct.price) {
-      alert('Please fill in all required fields');
+    if (!newProduct.name || !newProduct.sku || !newProduct.category || !newProduct.pricingTiers?.length) {
+      alert('Please fill in all required fields including at least one pricing tier');
       return;
     }
 
     const product: JewelryProduct = {
       ...newProduct as JewelryProduct,
-      id: Math.max(...products.map(p => p.id)) + 1,
+      id: editingProduct ? editingProduct.id : Math.max(...products.map(p => p.id)) + 1,
       status: newProduct.stock && newProduct.stock > 0 ? 'Active' : 'Out of Stock',
-      rating: 0,
-      createdAt: new Date().toISOString().split('T')[0]
+      rating: newProduct.rating || 0,
+      createdAt: editingProduct ? editingProduct.createdAt : new Date().toISOString().split('T')[0]
     };
 
-    setProducts([...products, product]);
+    if (editingProduct) {
+      setProducts(products.map(p => p.id === editingProduct.id ? product : p));
+      setEditingProduct(null);
+    } else {
+      setProducts([...products, product]);
+    }
+
     setNewProduct({
       name: '',
       images: [],
@@ -159,55 +303,42 @@ const Products: React.FC = () => {
       sku: '',
       shape: '',
       category: '',
-      price: 0,
+      subCategory: '',
+      pricingTiers: [],
       stock: 0,
       description: '',
       diamondCertification: '',
       goldCertification: '',
       sideStones: '',
-      customizable: false
+      customizable: false,
+      occasion: '',
+      gender: '',
+      collection: '',
+      stoneClarity: '',
+      stoneColor: '',
+      stoneCut: '',
+      settingType: '',
+      bandWidth: 0,
+      totalDiamonds: 0,
+      warranty: '',
+      returnPolicy: '',
+      tags: [],
+      rating: 0
     });
-    setShowAddModal(false);
+    setSelectedImages([]);
+    setImagePreviewUrls([]);
     setActiveTab('basic');
+    setShowAddModal(false);
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value, type } = e.target;
-    const checked = (e.target as HTMLInputElement).checked;
-    
-    setNewProduct(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : (type === 'number' ? Number(value) : value)
-    }));
+  const handleViewProduct = (product: any) => {
+    setViewingProduct(product);
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      const filePromises = Array.from(files).map((file) => {
-        return new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            resolve(e.target?.result as string);
-          };
-          reader.readAsDataURL(file);
-        });
-      });
-
-      Promise.all(filePromises).then((imageUrls) => {
-        setNewProduct(prev => ({
-          ...prev,
-          images: [...(prev.images || []), ...imageUrls]
-        }));
-      });
-    }
-  };
-
-  const handleRemoveImage = (indexToRemove: number) => {
-    setNewProduct(prev => ({
-      ...prev,
-      images: (prev.images || []).filter((_, index) => index !== indexToRemove)
-    }));
+  const handleEditProduct = (product: any) => {
+    setEditingProduct(product);
+    setNewProduct(product);
+    setShowAddModal(true);
   };
 
   const handleSizeToggle = (size: string) => {
@@ -225,6 +356,14 @@ const Products: React.FC = () => {
     }
   };
 
+  const handleTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const tags = e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag);
+    setNewProduct(prev => ({
+      ...prev,
+      tags
+    }));
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Active': return 'bg-green-100 text-green-800';
@@ -234,23 +373,52 @@ const Products: React.FC = () => {
     }
   };
 
-  const renderStars = (rating: number) => {
-    return [...Array(5)].map((_, i) => (
-      <Star
-        key={i}
-        className={`h-4 w-4 ${i < Math.floor(rating) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
-      />
-    ));
+  const renderStars = (rating: number, interactive: boolean = false) => {
+    return (
+      <div className="flex items-center space-x-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            key={star}
+            type="button"
+            onClick={interactive ? () => handleRatingChange(star) : undefined}
+            className={`${interactive ? 'cursor-pointer hover:scale-110' : 'cursor-default'} transition-transform`}
+            disabled={!interactive}
+          >
+            <Star
+              className={`h-5 w-5 ${
+                star <= rating
+                  ? 'text-yellow-400 fill-current'
+                  : 'text-gray-300'
+              }`}
+            />
+          </button>
+        ))}
+        {interactive && (
+          <span className="ml-2 text-sm text-gray-600">
+            {rating > 0 ? `${rating}/5` : 'No rating'}
+          </span>
+        )}
+      </div>
+    );
+  };
+
+  const getSubCategories = () => {
+    return selectedCategory === 'All' ? [] : categories[selectedCategory as keyof typeof categories] || [];
   };
 
   const AddProductModal = () => (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-gray-200">
+      <div className="bg-white rounded-lg max-w-6xl w-full max-h-[95vh] overflow-y-auto">
+        <div className="p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900">Add New Jewelry Product</h2>
+            <h2 className="text-xl font-semibold text-gray-900">
+              {editingProduct ? 'Edit Jewelry Product' : 'Add New Jewelry Product'}
+            </h2>
             <button
-              onClick={() => setShowAddModal(false)}
+              onClick={() => {
+                setShowAddModal(false);
+                setEditingProduct(null);
+              }}
               className="text-gray-400 hover:text-gray-600"
             >
               <X className="h-6 w-6" />
@@ -263,8 +431,10 @@ const Products: React.FC = () => {
               {[
                 { id: 'basic', label: 'Basic Info', icon: FileText },
                 { id: 'specifications', label: 'Specifications', icon: Gem },
+                { id: 'pricing', label: 'Pricing & Tiers', icon: DollarSign },
                 { id: 'certifications', label: 'Certifications', icon: Award },
-                { id: 'customization', label: 'Customization', icon: Palette }
+                { id: 'customization', label: 'Customization', icon: Palette },
+                { id: 'additional', label: 'Additional Info', icon: Settings }
               ].map((tab) => {
                 const Icon = tab.icon;
                 return (
@@ -289,7 +459,7 @@ const Products: React.FC = () => {
         <div className="p-6">
           {activeTab === 'basic' && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Product Name *
@@ -320,6 +490,20 @@ const Products: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Collection
+                  </label>
+                  <input
+                    type="text"
+                    name="collection"
+                    value={newProduct.collection || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                    placeholder="e.g., Eternal Collection"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Category *
                   </label>
                   <select
@@ -329,24 +513,62 @@ const Products: React.FC = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                   >
                     <option value="">Select Category</option>
-                    {categories.slice(1).map(category => (
+                    {Object.keys(categories).slice(1).map(category => (
                       <option key={category} value={category}>{category}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Sub Category *
+                  </label>
+                  <select
+                    name="subCategory"
+                    value={newProduct.subCategory || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                    disabled={!newProduct.category}
+                  >
+                    <option value="">Select Sub Category</option>
+                    {getSubCategories().map(subCategory => (
+                      <option key={subCategory} value={subCategory}>{subCategory}</option>
+                    ))}
+                  </select>
+                </div> */}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Gender
+                  </label>
+                  <select
+                    name="gender"
+                    value={newProduct.gender || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  >
+                    <option value="">Select Gender</option>
+                    {genders.map(gender => (
+                      <option key={gender} value={gender}>{gender}</option>
                     ))}
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Price (₹) *
+                    Occasion
                   </label>
-                  <input
-                    type="number"
-                    name="price"
-                    value={newProduct.price || ''}
+                  <select
+                    name="occasion"
+                    value={newProduct.occasion || ''}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    placeholder="185000"
-                  />
+                  >
+                    <option value="">Select Occasion</option>
+                    {occasions.map(occasion => (
+                      <option key={occasion} value={occasion}>{occasion}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
@@ -362,44 +584,58 @@ const Products: React.FC = () => {
                     placeholder="10"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tags (comma separated)
+                  </label>
+                  <input
+                    type="text"
+                    name="tags"
+                    value={newProduct.tags?.join(', ') || ''}
+                    onChange={handleTagsChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                    placeholder="engagement, solitaire, diamond"
+                  />
+                </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Product Images
+                  Product Images *
                 </label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                  <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                  <div className="mt-4">
-                    <label className="cursor-pointer">
-                      <span className="mt-2 block text-sm font-medium text-gray-900">
-                        Upload product images
-                      </span>
-                      <input
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="hidden"
-                      />
+                <div className="space-y-4">
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-amber-400 transition-colors">
+                    <input 
+                      type="file" 
+                      multiple 
+                      accept="image/*" 
+                      onChange={handleImageUpload}
+                      className="hidden" 
+                      id="image-upload" 
+                    />
+                    <label htmlFor="image-upload" className="cursor-pointer">
+                      <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-600">Click to upload images</p>
+                      <p className="text-xs text-gray-500">PNG, JPG up to 10MB each</p>
                     </label>
-                    <p className="mt-1 text-sm text-gray-500">PNG, JPG, GIF up to 10MB each</p>
                   </div>
-                  {newProduct.images && newProduct.images.length > 0 && (
-                    <div className="mt-4 grid grid-cols-4 gap-2">
-                      {newProduct.images.map((image, index) => (
+                  
+                  {imagePreviewUrls.length > 0 && (
+                    <div className="grid grid-cols-3 gap-4">
+                      {imagePreviewUrls.map((url, index) => (
                         <div key={index} className="relative">
-                          <img
-                            src={image}
-                            alt={`Product ${index + 1}`}
-                            className="h-20 w-20 object-cover rounded-lg"
+                          <img 
+                            src={url} 
+                            alt={`Preview ${index + 1}`}
+                            className="w-full h-24 object-cover rounded-lg border"
                           />
                           <button
-                            onClick={() => handleRemoveImage(index)}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
                             type="button"
+                            onClick={() => removeImage(index)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
                           >
-                            <X className="h-3 w-3" />
+                            ×
                           </button>
                         </div>
                       ))}
@@ -421,12 +657,19 @@ const Products: React.FC = () => {
                   placeholder="Detailed description of the jewelry piece..."
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Product Rating
+                </label>
+                {renderStars(newProduct.rating || 0, true)}
+              </div>
             </div>
           )}
 
           {activeTab === 'specifications' && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     <Gem className="inline h-4 w-4 mr-1" />
@@ -516,6 +759,23 @@ const Products: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Setting Type
+                  </label>
+                  <select
+                    name="settingType"
+                    value={newProduct.settingType || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  >
+                    <option value="">Select Setting Type</option>
+                    {settingTypes.map(setting => (
+                      <option key={setting} value={setting}>{setting}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     <Weight className="inline h-4 w-4 mr-1" />
                     Metal Gross Weight (Grams)
                   </label>
@@ -543,6 +803,69 @@ const Products: React.FC = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                     placeholder="1.5"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Total Diamonds
+                  </label>
+                  <input
+                    type="number"
+                    name="totalDiamonds"
+                    value={newProduct.totalDiamonds || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                    placeholder="1"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Band Width (mm)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    name="bandWidth"
+                    value={newProduct.bandWidth || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                    placeholder="2.5"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Stone Clarity
+                  </label>
+                  <select
+                    name="stoneClarity"
+                    value={newProduct.stoneClarity || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  >
+                    <option value="">Select Clarity</option>
+                    {diamondQualities.map(quality => (
+                      <option key={quality} value={quality}>{quality}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Stone Cut
+                  </label>
+                  <select
+                    name="stoneCut"
+                    value={newProduct.stoneCut || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  >
+                    <option value="">Select Cut</option>
+                    {stoneCuts.map(cut => (
+                      <option key={cut} value={cut}>{cut}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
@@ -585,6 +908,118 @@ const Products: React.FC = () => {
             </div>
           )}
 
+          {activeTab === 'pricing' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium text-gray-900">Pricing Tiers by Metal Quality</h3>
+                <button
+                  type="button"
+                  onClick={addPricingTier}
+                  className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors flex items-center space-x-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Add Pricing Tier</span>
+                </button>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <h4 className="text-sm font-medium text-amber-800 mb-2">Dynamic Pricing Information</h4>
+                <p className="text-sm text-amber-700">
+                  Set different prices for different metal qualities. When customers select a metal type on the frontend, 
+                  the price will automatically update based on these tiers. Include base price, making charges, and GST rate.
+                </p>
+              </div>
+
+              {(newProduct.pricingTiers || []).map((tier, index) => (
+                <div key={index} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-md font-medium text-gray-900">Pricing Tier {index + 1}</h4>
+                    <button
+                      type="button"
+                      onClick={() => removePricingTier(index)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Metal Quality
+                      </label>
+                      <select
+                        value={tier.metalQuality}
+                        onChange={(e) => handlePricingTierChange(index, 'metalQuality', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                      >
+                        {metalQualities.map(quality => (
+                          <option key={quality} value={quality}>{quality}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Base Price (₹)
+                      </label>
+                      <input
+                        type="number"
+                        value={tier.basePrice}
+                        onChange={(e) => handlePricingTierChange(index, 'basePrice', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                        placeholder="185000"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Making Charges (₹)
+                      </label>
+                      <input
+                        type="number"
+                        value={tier.makingCharges}
+                        onChange={(e) => handlePricingTierChange(index, 'makingCharges', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                        placeholder="18000"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        GST Rate (%)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={tier.gstRate}
+                        onChange={(e) => handlePricingTierChange(index, 'gstRate', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                        placeholder="3"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                    <p className="text-sm text-gray-600">
+                      <strong>Total Price:</strong> ₹{(tier.basePrice + tier.makingCharges + (tier.basePrice + tier.makingCharges) * tier.gstRate / 100).toLocaleString('en-IN')}
+                      <span className="ml-2 text-xs text-gray-500">
+                        (Base: ₹{tier.basePrice.toLocaleString('en-IN')} + Making: ₹{tier.makingCharges.toLocaleString('en-IN')} + GST: ₹{((tier.basePrice + tier.makingCharges) * tier.gstRate / 100).toLocaleString('en-IN')})
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              ))}
+
+              {(!newProduct.pricingTiers || newProduct.pricingTiers.length === 0) && (
+                <div className="text-center py-8 text-gray-500">
+                  <DollarSign className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <p>No pricing tiers added yet. Click "Add Pricing Tier" to get started.</p>
+                </div>
+              )}
+            </div>
+          )}
+
           {activeTab === 'certifications' && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -623,6 +1058,42 @@ const Products: React.FC = () => {
                     <option value="International Hallmark">International Hallmark</option>
                   </select>
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Warranty Period
+                  </label>
+                  <select
+                    name="warranty"
+                    value={newProduct.warranty || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  >
+                    <option value="">Select Warranty</option>
+                    <option value="6 Months">6 Months</option>
+                    <option value="1 Year">1 Year</option>
+                    <option value="2 Years">2 Years</option>
+                    <option value="Lifetime">Lifetime</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Return Policy
+                  </label>
+                  <select
+                    name="returnPolicy"
+                    value={newProduct.returnPolicy || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  >
+                    <option value="">Select Return Policy</option>
+                    <option value="7 Days">7 Days</option>
+                    <option value="15 Days">15 Days</option>
+                    <option value="30 Days">30 Days</option>
+                    <option value="No Returns">No Returns</option>
+                  </select>
+                </div>
               </div>
             </div>
           )}
@@ -648,18 +1119,41 @@ const Products: React.FC = () => {
                   <h4 className="text-sm font-medium text-amber-800 mb-2">Customization Options</h4>
                   <p className="text-sm text-amber-700">
                     When enabled, customers can request modifications to metal type, stone selection, 
-                    sizing, and engraving options. Custom orders will require approval and may have 
+                    sizing, engraving options, and other specifications. Custom orders will require approval and may have 
                     extended delivery times.
                   </p>
                 </div>
               )}
             </div>
           )}
+
+          {activeTab === 'additional' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Stone Color
+                  </label>
+                  <input
+                    type="text"
+                    name="stoneColor"
+                    value={newProduct.stoneColor || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                    placeholder="e.g., D, E, F"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+        <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 sticky bottom-0 bg-white">
           <button
-            onClick={() => setShowAddModal(false)}
+            onClick={() => {
+              setShowAddModal(false);
+              setEditingProduct(null);
+            }}
             className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
             Cancel
@@ -669,7 +1163,7 @@ const Products: React.FC = () => {
             className="px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors flex items-center space-x-2"
           >
             <Plus className="h-4 w-4" />
-            <span>Add Product</span>
+            <span>{editingProduct ? 'Update Product' : 'Add Product'}</span>
           </button>
         </div>
       </div>
@@ -680,17 +1174,33 @@ const Products: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Jewelry Products</h1>
-        <button 
-          onClick={() => setShowAddModal(true)}
-          className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors flex items-center space-x-2"
-        >
-          <Plus className="h-5 w-5" />
-          <span>Add Jewelry Product</span>
-        </button>
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            {/* <button
+              onClick={() => setViewMode('table')}
+              className={`p-2 rounded-lg ${viewMode === 'table' ? 'bg-amber-100 text-amber-600' : 'text-gray-400 hover:text-gray-600'}`}
+            >
+              <FileText className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-lg ${viewMode === 'grid' ? 'bg-amber-100 text-amber-600' : 'text-gray-400 hover:text-gray-600'}`}
+            >
+              <Gem className="h-5 w-5" />
+            </button> */}
+          </div>
+          <button 
+            onClick={() => setShowAddModal(true)}
+            className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors flex items-center space-x-2"
+          >
+            <Plus className="h-5 w-5" />
+            <span>Add Jewelry Product</span>
+          </button>
+        </div>
       </div>
 
-      {/* Product Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {/* Enhanced Product Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
@@ -730,17 +1240,29 @@ const Products: React.FC = () => {
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
+              <p className="text-sm font-medium text-gray-600">Categories</p>
+              <p className="text-2xl font-bold text-gray-900">{Object.keys(categories).length - 1}</p>
+            </div>
+            <div className="bg-blue-100 p-3 rounded-full">
+              <FileText className="h-6 w-6 text-blue-600" />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
               <p className="text-sm font-medium text-gray-600">Total Value</p>
-              <p className="text-2xl font-bold text-gray-900">₹{(products.reduce((sum, p) => sum + (p.price * p.stock), 0) / 100000).toFixed(1)}L</p>
+              <p className="text-2xl font-bold text-gray-900">₹{(products.reduce((sum, p) => sum + (p.pricingTiers[0]?.basePrice || 0) * p.stock, 0) / 100000).toFixed(1)}L</p>
             </div>
             <div className="bg-green-100 p-3 rounded-full">
-              <Weight className="h-6 w-6 text-green-600" />
+              <DollarSign className="h-6 w-6 text-green-600" />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Enhanced Filters */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
           <div className="flex items-center space-x-4">
@@ -757,13 +1279,29 @@ const Products: React.FC = () => {
             
             <select
               value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
+              onChange={(e) => {
+                setSelectedCategory(e.target.value);
+                setSelectedSubCategory('All');
+              }}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
             >
-              {categories.map(category => (
+              {Object.keys(categories).map(category => (
                 <option key={category} value={category}>{category}</option>
               ))}
             </select>
+
+            {selectedCategory !== 'All' && getSubCategories().length > 0 && (
+              <select
+                value={selectedSubCategory}
+                onChange={(e) => setSelectedSubCategory(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+              >
+                <option value="All">All Sub Categories</option>
+                {getSubCategories().map(subCategory => (
+                  <option key={subCategory} value={subCategory}>{subCategory}</option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div className="flex items-center space-x-2">
@@ -775,23 +1313,26 @@ const Products: React.FC = () => {
         </div>
       </div>
 
-      {/* Products Table */}
+      {/* Enhanced Products Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Product
+                  Product Details
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Category & Collection
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Specifications
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Weight & Carat
+                  Weight & Dimensions
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Price & Stock
+                  Pricing Tiers
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Certifications
@@ -800,7 +1341,7 @@ const Products: React.FC = () => {
                   Rating
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                  Stock & Status
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
@@ -810,75 +1351,105 @@ const Products: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredProducts.map((product) => (
                 <tr key={product.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4">
                     <div className="flex items-center">
-                      <img
-                        src={product.images[0]}
-                        alt={product.name}
-                        className="h-12 w-12 rounded-lg object-cover"
-                      />
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">{product.name}</div>
                         <div className="text-sm text-gray-500">{product.sku}</div>
-                        <div className="text-xs text-gray-400">{product.category}</div>
+                        <div className="flex items-center mt-1">
+                          {renderStars(product.rating)}
+                          <span className="text-xs text-gray-500 ml-1">({product.rating})</span>
+                        </div>
+                        {product.customizable && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 mt-1">
+                            <Palette className="h-3 w-3 mr-1" />
+                            Customizable
+                          </span>
+                        )}
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-gray-900">
+                      <div className="font-medium">{product.category}</div>
+                      <div className="text-gray-500">{product.subCategory}</div>
+                      <div className="text-gray-500 text-xs">{product.collection}</div>
+                      <div className="text-gray-500 text-xs">{product.occasion} • {product.gender}</div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
                     <div className="text-sm text-gray-900">
                       <div>{product.metalQuality} {product.metalColor}</div>
                       <div className="text-gray-500">{product.shape}</div>
                       <div className="text-gray-500">{product.diamondQuality} - {product.diamondTone}</div>
+                      <div className="text-gray-500 text-xs">{product.settingType}</div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4">
                     <div className="text-sm text-gray-900">
                       <div>Metal: {product.metalGrossWeight}g</div>
                       <div>Diamond: {product.diamondWeight}ct</div>
+                      <div className="text-gray-500 text-xs">Band: {product.bandWidth}mm</div>
+                      <div className="text-gray-500 text-xs">Stones: {product.totalDiamonds}</div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4">
                     <div className="text-sm text-gray-900">
-                      <div className="font-medium">₹{product.price.toLocaleString('en-IN')}</div>
-                      <div className="text-gray-500">Stock: {product.stock}</div>
+                      {product.pricingTiers.map((tier, index) => (
+                        <div key={index} className="mb-1">
+                          <span className="font-medium">{tier.metalQuality}:</span>
+                          <span className="ml-1">₹{(tier.basePrice + tier.makingCharges).toLocaleString('en-IN')}</span>
+                        </div>
+                      ))}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4">
                     <div className="text-sm text-gray-900">
-                      <div className="flex items-center">
+                      <div className="flex items-center mb-1">
                         <Shield className="h-3 w-3 text-blue-500 mr-1" />
                         <span className="text-xs">{product.diamondCertification}</span>
                       </div>
-                      <div className="flex items-center">
+                      <div className="flex items-center mb-1">
                         <Award className="h-3 w-3 text-amber-500 mr-1" />
                         <span className="text-xs">{product.goldCertification}</span>
                       </div>
+                      <div className="text-xs text-gray-500">{product.warranty} warranty</div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center space-x-1">
-                      {renderStars(product.rating)}
-                      <span className="text-sm text-gray-600 ml-2">{product.rating}</span>
-                    </div>
-                    {product.customizable && (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 mt-1">
-                        <Palette className="h-3 w-3 mr-1" />
-                        Customizable
+                    {renderStars(product.rating)}
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-gray-900">
+                      <div className="font-medium">Stock: {product.stock}</div>
+                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(product.status)}`}>
+                        {product.status}
                       </span>
-                    )}
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(product.status)}`}>
-                      {product.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button 
-                      onClick={() => handleDelete(product.id)}
-                      className="text-red-600 hover:text-red-900 p-1"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                  <td className="px-6 py-4 text-right text-sm font-medium">
+                    <div className="flex items-center justify-end space-x-2">
+                      <button 
+                        onClick={() => handleViewProduct(product)}
+                        className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded"
+                        title="View Product"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                      <button 
+                        onClick={() => handleEditProduct(product)}
+                        className="text-amber-600 hover:text-amber-900 p-1 hover:bg-amber-50 rounded"
+                        title="Edit Product"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(product.id)}
+                        className="text-red-600 hover:text-red-900 p-1"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -888,6 +1459,89 @@ const Products: React.FC = () => {
       </div>
 
       {showAddModal && <AddProductModal />}
+
+      {/* View Product Modal */}
+      {viewingProduct && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-gray-900">Product Details</h2>
+                <button
+                  onClick={() => setViewingProduct(null)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div>
+                  <img
+                    src={viewingProduct.images[0]}
+                    alt={viewingProduct.name}
+                    className="w-full h-64 object-cover rounded-lg"
+                  />
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900">{viewingProduct.name}</h3>
+                    <p className="text-gray-600">SKU: {viewingProduct.sku}</p>
+                  </div>
+                  
+                  <div className="flex items-center space-x-4">
+                    <span className="text-2xl font-bold text-amber-600">
+                      ₹{viewingProduct.pricingTiers[0]?.basePrice?.toLocaleString('en-IN') || 'N/A'}
+                    </span>
+                    {renderStars(viewingProduct.rating)}
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium text-gray-700">Category:</span>
+                      <p className="text-gray-600">{viewingProduct.category}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Metal:</span>
+                      <p className="text-gray-600">{viewingProduct.metalQuality} {viewingProduct.metalColor}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Stock:</span>
+                      <p className="text-gray-600">{viewingProduct.stock} units</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Weight:</span>
+                      <p className="text-gray-600">{viewingProduct.metalGrossWeight}g</p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <span className="font-medium text-gray-700">Certifications:</span>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                        {viewingProduct.diamondCertification}
+                      </span>
+                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                        {viewingProduct.goldCertification}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {viewingProduct.customizable && (
+                    <div className="flex items-center space-x-2">
+                      <Settings className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm text-blue-600 font-medium">Customizable</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
