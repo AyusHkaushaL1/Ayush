@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Plus, Search, Filter, Trash2, Upload, X, Star, Award, Gem, Palette, Ruler, Weight, FileText, Shield, DollarSign, Settings, Eye, Edit } from 'lucide-react';
 
 interface PricingTier {
+  id: string; // Added a unique id for better key management in lists
   metalQuality: string;
   basePrice: number;
   makingCharges: number;
@@ -53,58 +54,14 @@ const Products: React.FC = () => {
   const [selectedSubCategory, setSelectedSubCategory] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
   const [activeTab, setActiveTab] = useState('basic');
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table'); // viewMode is not currently used in rendering logic
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
-  const [editingProduct, setEditingProduct] = useState<any>(null);
-  const [viewingProduct, setViewingProduct] = useState<any>(null);
+  const [editingProduct, setEditingProduct] = useState<JewelryProduct | null>(null); // Stronger type for editingProduct
+  const [viewingProduct, setViewingProduct] = useState<JewelryProduct | null>(null); // Stronger type for viewingProduct
   
-  const [products, setProducts] = useState<JewelryProduct[]>([
-    {
-      id: 1,
-      name: 'Eternal Solitaire Diamond Ring',
-      images: ['https://images.pexels.com/photos/1191531/pexels-photo-1191531.jpeg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop'],
-      metalQuality: '18K',
-      metalColor: 'White Gold',
-      diamondQuality: 'VVS1',
-      diamondTone: 'D (Colorless)',
-      sizes: ['5', '6', '7', '8', '9'],
-      metalGrossWeight: 3.2,
-      diamondWeight: 1.5,
-      sku: 'ESR-18K-001',
-      shape: 'Round Brilliant',
-      category: 'Rings',
-      subCategory: 'Engagement Rings',
-      pricingTiers: [
-        { metalQuality: '14K', basePrice: 145000, makingCharges: 15000, gstRate: 3 },
-        { metalQuality: '18K', basePrice: 185000, makingCharges: 18000, gstRate: 3 },
-        { metalQuality: '22K', basePrice: 225000, makingCharges: 22000, gstRate: 3 }
-      ],
-      stock: 8,
-      description: 'A timeless solitaire engagement ring featuring a brilliant round diamond set in premium white gold.',
-      diamondCertification: 'GIA Certified',
-      goldCertification: 'BIS Hallmarked',
-      sideStones: 'None',
-      status: 'Active',
-      rating: 4.9,
-      customizable: true,
-      createdAt: '2024-01-15',
-      occasion: 'Engagement',
-      gender: 'Women',
-      collection: 'Eternal Collection',
-      stoneClarity: 'VVS1',
-      stoneColor: 'D',
-      stoneCut: 'Excellent',
-      settingType: 'Prong Setting',
-      bandWidth: 2.5,
-      totalDiamonds: 1,
-      warranty: '1 Year',
-      returnPolicy: '30 Days',
-      tags: ['engagement', 'solitaire', 'diamond', 'classic']
-    }
-  ]);
-
-  const [newProduct, setNewProduct] = useState<Partial<JewelryProduct>>({
+  // Helper to get initial newProduct state
+  const getInitialNewProductState = () => ({
     name: '',
     images: [],
     metalQuality: '',
@@ -139,6 +96,53 @@ const Products: React.FC = () => {
     tags: [],
     rating: 0
   });
+
+  const [products, setProducts] = useState<JewelryProduct[]>([
+    {
+      id: 1,
+      name: 'Eternal Solitaire Diamond Ring',
+      images: ['https://images.pexels.com/photos/1191531/pexels-photo-1191531.jpeg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop'],
+      metalQuality: '18K',
+      metalColor: 'White Gold',
+      diamondQuality: 'VVS1',
+      diamondTone: 'D (Colorless)',
+      sizes: ['5', '6', '7', '8', '9'],
+      metalGrossWeight: 3.2,
+      diamondWeight: 1.5,
+      sku: 'ESR-18K-001',
+      shape: 'Round Brilliant',
+      category: 'Rings',
+      subCategory: 'Engagement Rings',
+      pricingTiers: [
+        { id: 'tier-1-1', metalQuality: '14K', basePrice: 145000, makingCharges: 15000, gstRate: 3 },
+        { id: 'tier-1-2', metalQuality: '18K', basePrice: 185000, makingCharges: 18000, gstRate: 3 },
+        { id: 'tier-1-3', metalQuality: '22K', basePrice: 225000, makingCharges: 22000, gstRate: 3 }
+      ],
+      stock: 8,
+      description: 'A timeless solitaire engagement ring featuring a brilliant round diamond set in premium white gold.',
+      diamondCertification: 'GIA Certified',
+      goldCertification: 'BIS Hallmarked',
+      sideStones: 'None',
+      status: 'Active',
+      rating: 4.9,
+      customizable: true,
+      createdAt: '2024-01-15',
+      occasion: 'Engagement',
+      gender: 'Women',
+      collection: 'Eternal Collection',
+      stoneClarity: 'VVS1',
+      stoneColor: 'D',
+      stoneCut: 'Excellent',
+      settingType: 'Prong Setting',
+      bandWidth: 2.5,
+      totalDiamonds: 1,
+      warranty: '1 Year',
+      returnPolicy: '30 Days',
+      tags: ['engagement', 'solitaire', 'diamond', 'classic']
+    }
+  ]);
+
+  const [newProduct, setNewProduct] = useState<Partial<JewelryProduct>>(getInitialNewProductState());
 
   const categories = {
     'All': [],
@@ -187,6 +191,7 @@ const Products: React.FC = () => {
         [name]: checked
       }));
     } else if (type === 'number') {
+      // For number inputs, allow empty string to clear the field visually
       setNewProduct(prev => ({
         ...prev,
         [name]: value === '' ? '' : Number(value)
@@ -217,9 +222,11 @@ const Products: React.FC = () => {
     setImagePreviewUrls(previewUrls);
     
     // Update form state with file names (in real app, you'd upload to server)
+    // For local display, store the object URLs or base64 if needed, but for 'images'
+    // prop on product, usually it's just paths/names
     setNewProduct(prev => ({
       ...prev,
-      images: files.map(file => file.name)
+      images: [...(prev.images || []), ...files.map(file => URL.createObjectURL(file))] // Store actual URLs for preview persistence
     }));
   };
 
@@ -232,16 +239,16 @@ const Products: React.FC = () => {
     
     setNewProduct(prev => ({
       ...prev,
-      images: newFiles.map(file => file.name)
+      images: newUrls // Ensure newProduct.images reflects the actual preview URLs
     }));
   };
 
-  const handlePricingTierChange = (index: number, field: keyof PricingTier, value: string | number) => {
-    const updatedTiers = [...(newProduct.pricingTiers || [])];
-    updatedTiers[index] = {
-      ...updatedTiers[index],
-      [field]: typeof value === 'string' && field !== 'metalQuality' ? Number(value) : value
-    };
+  const handlePricingTierChange = (id: string, field: keyof PricingTier, value: string | number) => {
+    const updatedTiers = (newProduct.pricingTiers || []).map(tier =>
+      tier.id === id
+        ? { ...tier, [field]: typeof value === 'string' && field !== 'metalQuality' ? Number(value) : value }
+        : tier
+    );
     setNewProduct(prev => ({
       ...prev,
       pricingTiers: updatedTiers
@@ -250,6 +257,7 @@ const Products: React.FC = () => {
 
   const addPricingTier = () => {
     const newTier: PricingTier = {
+      id: crypto.randomUUID(), // Generate a unique ID for the new tier
       metalQuality: '14K',
       basePrice: 0,
       makingCharges: 0,
@@ -261,8 +269,8 @@ const Products: React.FC = () => {
     }));
   };
 
-  const removePricingTier = (index: number) => {
-    const updatedTiers = (newProduct.pricingTiers || []).filter((_, i) => i !== index);
+  const removePricingTier = (id: string) => {
+    const updatedTiers = (newProduct.pricingTiers || []).filter(tier => tier.id !== id);
     setNewProduct(prev => ({
       ...prev,
       pricingTiers: updatedTiers
@@ -270,74 +278,63 @@ const Products: React.FC = () => {
   };
 
   const handleAddProduct = () => {
-    if (!newProduct.name || !newProduct.sku || !newProduct.category || !newProduct.pricingTiers?.length) {
-      alert('Please fill in all required fields including at least one pricing tier');
+    // Basic validation
+    if (!newProduct.name || !newProduct.sku || !newProduct.category || !newProduct.pricingTiers || newProduct.pricingTiers.length === 0) {
+      alert('Please fill in all required fields: Product Name, SKU, Category, and at least one Pricing Tier.');
+      return;
+    }
+    // More robust validation for pricing tiers (ensure prices are numbers and not empty)
+    const isValidPricing = newProduct.pricingTiers.every(tier => 
+      tier.basePrice !== undefined && tier.basePrice !== null && !isNaN(Number(tier.basePrice)) &&
+      tier.makingCharges !== undefined && tier.makingCharges !== null && !isNaN(Number(tier.makingCharges)) &&
+      tier.gstRate !== undefined && tier.gstRate !== null && !isNaN(Number(tier.gstRate))
+    );
+    if (!isValidPricing) {
+      alert('Please ensure all pricing tier values are valid numbers.');
       return;
     }
 
+
     const product: JewelryProduct = {
       ...newProduct as JewelryProduct,
-      id: editingProduct ? editingProduct.id : Math.max(...products.map(p => p.id)) + 1,
-      status: newProduct.stock && newProduct.stock > 0 ? 'Active' : 'Out of Stock',
+      id: editingProduct ? editingProduct.id : Math.max(0, ...products.map(p => p.id)) + 1, // Handle empty products array
+      status: (newProduct.stock && newProduct.stock > 0) ? 'Active' : 'Out of Stock',
       rating: newProduct.rating || 0,
       createdAt: editingProduct ? editingProduct.createdAt : new Date().toISOString().split('T')[0]
     };
 
     if (editingProduct) {
       setProducts(products.map(p => p.id === editingProduct.id ? product : p));
-      setEditingProduct(null);
     } else {
       setProducts([...products, product]);
     }
 
-    setNewProduct({
-      name: '',
-      images: [],
-      metalQuality: '',
-      metalColor: '',
-      diamondQuality: '',
-      diamondTone: '',
-      sizes: [],
-      metalGrossWeight: 0,
-      diamondWeight: 0,
-      sku: '',
-      shape: '',
-      category: '',
-      subCategory: '',
-      pricingTiers: [],
-      stock: 0,
-      description: '',
-      diamondCertification: '',
-      goldCertification: '',
-      sideStones: '',
-      customizable: false,
-      occasion: '',
-      gender: '',
-      collection: '',
-      stoneClarity: '',
-      stoneColor: '',
-      stoneCut: '',
-      settingType: '',
-      bandWidth: 0,
-      totalDiamonds: 0,
-      warranty: '',
-      returnPolicy: '',
-      tags: [],
-      rating: 0
-    });
+    // Reset all modal states
+    setShowAddModal(false);
+    setEditingProduct(null);
+    setNewProduct(getInitialNewProductState());
     setSelectedImages([]);
     setImagePreviewUrls([]);
     setActiveTab('basic');
-    setShowAddModal(false);
   };
 
-  const handleViewProduct = (product: any) => {
+  const handleViewProduct = (product: JewelryProduct) => {
     setViewingProduct(product);
   };
 
-  const handleEditProduct = (product: any) => {
+  const handleEditProduct = (product: JewelryProduct) => {
     setEditingProduct(product);
-    setNewProduct(product);
+    // When editing, ensure existing pricing tiers have IDs if they don't already
+    const productWithTierIds = {
+      ...product,
+      pricingTiers: product.pricingTiers.map(tier => ({
+        ...tier,
+        id: tier.id || crypto.randomUUID() // Add ID if missing for existing products
+      }))
+    };
+    setNewProduct(productWithTierIds);
+    // For images, if product.images holds URLs, populate imagePreviewUrls
+    setImagePreviewUrls(product.images);
     setShowAddModal(true);
   };
 
@@ -418,6 +415,10 @@ const Products: React.FC = () => {
               onClick={() => {
                 setShowAddModal(false);
                 setEditingProduct(null);
+                setNewProduct(getInitialNewProductState()); // Reset state on close
+                setSelectedImages([]);
+                setImagePreviewUrls([]);
+                setActiveTab('basic');
               }}
               className="text-gray-400 hover:text-gray-600"
             >
@@ -519,24 +520,26 @@ const Products: React.FC = () => {
                   </select>
                 </div>
 
-                {/* <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Sub Category *
-                  </label>
-                  <select
-                    name="subCategory"
-                    value={newProduct.subCategory || ''}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    disabled={!newProduct.category}
-                  >
-                    <option value="">Select Sub Category</option>
-                    {getSubCategories().map(subCategory => (
-                      <option key={subCategory} value={subCategory}>{subCategory}</option>
-                    ))}
-                  </select>
-                </div> */}
-
+                {/* Potentially re-add subcategory logic once main issue is resolved if needed */}
+                {newProduct.category && getSubCategories().length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Sub Category *
+                    </label>
+                    <select
+                      name="subCategory"
+                      value={newProduct.subCategory || ''}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                    >
+                      <option value="">Select Sub Category</option>
+                      {getSubCategories().map(subCategory => (
+                        <option key={subCategory} value={subCategory}>{subCategory}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Gender
@@ -578,7 +581,7 @@ const Products: React.FC = () => {
                   <input
                     type="number"
                     name="stock"
-                    value={newProduct.stock || ''}
+                    value={newProduct.stock === 0 ? '' : newProduct.stock} // Explicitly handle 0 for display
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                     placeholder="10"
@@ -624,7 +627,7 @@ const Products: React.FC = () => {
                   {imagePreviewUrls.length > 0 && (
                     <div className="grid grid-cols-3 gap-4">
                       {imagePreviewUrls.map((url, index) => (
-                        <div key={index} className="relative">
+                        <div key={url} className="relative"> {/* Use URL as key for image previews */}
                           <img 
                             src={url} 
                             alt={`Preview ${index + 1}`}
@@ -783,7 +786,7 @@ const Products: React.FC = () => {
                     type="number"
                     step="0.1"
                     name="metalGrossWeight"
-                    value={newProduct.metalGrossWeight || ''}
+                    value={newProduct.metalGrossWeight === 0 ? '' : newProduct.metalGrossWeight}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                     placeholder="3.2"
@@ -798,7 +801,7 @@ const Products: React.FC = () => {
                     type="number"
                     step="0.01"
                     name="diamondWeight"
-                    value={newProduct.diamondWeight || ''}
+                    value={newProduct.diamondWeight === 0 ? '' : newProduct.diamondWeight}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                     placeholder="1.5"
@@ -812,7 +815,7 @@ const Products: React.FC = () => {
                   <input
                     type="number"
                     name="totalDiamonds"
-                    value={newProduct.totalDiamonds || ''}
+                    value={newProduct.totalDiamonds === 0 ? '' : newProduct.totalDiamonds}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                     placeholder="1"
@@ -827,7 +830,7 @@ const Products: React.FC = () => {
                     type="number"
                     step="0.1"
                     name="bandWidth"
-                    value={newProduct.bandWidth || ''}
+                    value={newProduct.bandWidth === 0 ? '' : newProduct.bandWidth}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                     placeholder="2.5"
@@ -930,13 +933,13 @@ const Products: React.FC = () => {
                 </p>
               </div>
 
-              {(newProduct.pricingTiers || []).map((tier, index) => (
-                <div key={index} className="border border-gray-200 rounded-lg p-4">
+              {(newProduct.pricingTiers || []).map((tier) => (
+                <div key={tier.id} className="border border-gray-200 rounded-lg p-4"> {/* Use tier.id as key */}
                   <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-md font-medium text-gray-900">Pricing Tier {index + 1}</h4>
+                    <h4 className="text-md font-medium text-gray-900">Pricing Tier</h4>
                     <button
                       type="button"
-                      onClick={() => removePricingTier(index)}
+                      onClick={() => removePricingTier(tier.id)} // Pass tier.id to remove function
                       className="text-red-600 hover:text-red-800"
                     >
                       <X className="h-4 w-4" />
@@ -950,7 +953,7 @@ const Products: React.FC = () => {
                       </label>
                       <select
                         value={tier.metalQuality}
-                        onChange={(e) => handlePricingTierChange(index, 'metalQuality', e.target.value)}
+                        onChange={(e) => handlePricingTierChange(tier.id, 'metalQuality', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                       >
                         {metalQualities.map(quality => (
@@ -965,8 +968,8 @@ const Products: React.FC = () => {
                       </label>
                       <input
                         type="number"
-                        value={tier.basePrice}
-                        onChange={(e) => handlePricingTierChange(index, 'basePrice', e.target.value)}
+                        value={tier.basePrice === 0 ? '' : tier.basePrice} // Explicitly handle 0 for display
+                        onChange={(e) => handlePricingTierChange(tier.id, 'basePrice', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                         placeholder="185000"
                       />
@@ -978,8 +981,8 @@ const Products: React.FC = () => {
                       </label>
                       <input
                         type="number"
-                        value={tier.makingCharges}
-                        onChange={(e) => handlePricingTierChange(index, 'makingCharges', e.target.value)}
+                        value={tier.makingCharges === 0 ? '' : tier.makingCharges} // Explicitly handle 0 for display
+                        onChange={(e) => handlePricingTierChange(tier.id, 'makingCharges', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                         placeholder="18000"
                       />
@@ -992,8 +995,8 @@ const Products: React.FC = () => {
                       <input
                         type="number"
                         step="0.1"
-                        value={tier.gstRate}
-                        onChange={(e) => handlePricingTierChange(index, 'gstRate', e.target.value)}
+                        value={tier.gstRate === 0 ? '' : tier.gstRate} // Explicitly handle 0 for display
+                        onChange={(e) => handlePricingTierChange(tier.id, 'gstRate', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                         placeholder="3"
                       />
@@ -1153,6 +1156,10 @@ const Products: React.FC = () => {
             onClick={() => {
               setShowAddModal(false);
               setEditingProduct(null);
+              setNewProduct(getInitialNewProductState()); // Reset state on cancel
+              setSelectedImages([]);
+              setImagePreviewUrls([]);
+              setActiveTab('basic');
             }}
             className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
@@ -1176,6 +1183,7 @@ const Products: React.FC = () => {
         <h1 className="text-2xl font-bold text-gray-900">Jewelry Products</h1>
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
+            {/* View mode buttons commented out as they are not implemented */}
             {/* <button
               onClick={() => setViewMode('table')}
               className={`p-2 rounded-lg ${viewMode === 'table' ? 'bg-amber-100 text-amber-600' : 'text-gray-400 hover:text-gray-600'}`}
@@ -1190,7 +1198,14 @@ const Products: React.FC = () => {
             </button> */}
           </div>
           <button 
-            onClick={() => setShowAddModal(true)}
+            onClick={() => {
+              setShowAddModal(true);
+              setEditingProduct(null); // Ensure no product is being edited
+              setNewProduct(getInitialNewProductState()); // Reset state when opening for new product
+              setSelectedImages([]);
+              setImagePreviewUrls([]);
+              setActiveTab('basic');
+            }}
             className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors flex items-center space-x-2"
           >
             <Plus className="h-5 w-5" />
@@ -1229,7 +1244,9 @@ const Products: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Avg. Rating</p>
-              <p className="text-2xl font-bold text-gray-900">4.8</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {(products.length > 0 ? (products.reduce((sum, p) => sum + p.rating, 0) / products.length) : 0).toFixed(1)}
+              </p> {/* Calculate dynamic average rating */}
             </div>
             <div className="bg-yellow-100 p-3 rounded-full">
               <Star className="h-6 w-6 text-yellow-600" />
@@ -1253,7 +1270,9 @@ const Products: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Value</p>
-              <p className="text-2xl font-bold text-gray-900">₹{(products.reduce((sum, p) => sum + (p.pricingTiers[0]?.basePrice || 0) * p.stock, 0) / 100000).toFixed(1)}L</p>
+              <p className="text-2xl font-bold text-gray-900">
+                ₹{((products.reduce((sum, p) => sum + (p.pricingTiers[0]?.basePrice || 0) * p.stock, 0)) / 1000000).toFixed(2)}M
+              </p> {/* Changed to Millions (M) for larger numbers */}
             </div>
             <div className="bg-green-100 p-3 rounded-full">
               <DollarSign className="h-6 w-6 text-green-600" />
@@ -1337,9 +1356,9 @@ const Products: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Certifications
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Rating
-                </th>
+                </th> */}
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Stock & Status
                 </th>
@@ -1353,6 +1372,7 @@ const Products: React.FC = () => {
                 <tr key={product.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div className="flex items-center">
+                      <img className="h-16 w-16 flex-shrink-0 object-cover rounded-md" src={product.images[0]} alt={product.name} />
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">{product.name}</div>
                         <div className="text-sm text-gray-500">{product.sku}</div>
@@ -1395,8 +1415,8 @@ const Products: React.FC = () => {
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900">
-                      {product.pricingTiers.map((tier, index) => (
-                        <div key={index} className="mb-1">
+                      {product.pricingTiers.map((tier) => (
+                        <div key={tier.id} className="mb-1"> {/* Key is now guaranteed unique */}
                           <span className="font-medium">{tier.metalQuality}:</span>
                           <span className="ml-1">₹{(tier.basePrice + tier.makingCharges).toLocaleString('en-IN')}</span>
                         </div>
@@ -1416,9 +1436,9 @@ const Products: React.FC = () => {
                       <div className="text-xs text-gray-500">{product.warranty} warranty</div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  {/* <td className="px-6 py-4 whitespace-nowrap">
                     {renderStars(product.rating)}
-                  </td>
+                  </td> */}
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900">
                       <div className="font-medium">Stock: {product.stock}</div>
@@ -1546,4 +1566,4 @@ const Products: React.FC = () => {
   );
 };
 
-export default Products;
+export default Products; 
