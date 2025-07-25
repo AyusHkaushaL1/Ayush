@@ -101,7 +101,7 @@ const Products: React.FC = () => {
     {
       id: 1,
       name: 'Eternal Solitaire Diamond Ring',
-      images: ['https://images.pexels.com/photos/1191531/pexels-photo-1191531.jpeg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop'],
+      images: ['https://geer.in/cdn/shop/files/GJLR-089_R1.jpg?v=1750331630'],
       metalQuality: '18K',
       metalColor: 'White Gold',
       diamondQuality: 'VVS1',
