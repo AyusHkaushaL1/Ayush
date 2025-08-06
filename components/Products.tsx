@@ -1,24 +1,38 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { Plus, Search, Filter, Trash2, Upload, X, Star, Award, Gem, Palette, Ruler, Weight, FileText, Shield, DollarSign, Settings, Eye, Edit } from 'lucide-react';
+import React, { useState, useCallback, memo, FC } from 'react';
+import { Plus, Search, Filter, Trash2, Upload, X, Star, Award, Gem, Palette, Ruler, Weight, FileText, Shield, DollarSign, Settings, Eye, Edit, Play, Image as ImageIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+
+interface MediaFile {
+  id: string;
+  url: string;
+  type: 'image' | 'video' | 'gif';
+  file?: File;
+}
+
+interface DiamondOption {
+  id: string;
+  quality: string;
+  count: number;
+  shape: string;
+  weight: number;
+  isMain?: boolean;
+}
 
 interface PricingTier {
   id: string;
   metalName: string;
   metalSubCategory: string;
-  pricePerGram: number;
-  weight: number;
-  makingCharges: number;
-  gstRate: number;
 }
 
 interface JewelryProduct {
   id: number;
   name: string;
+  media: MediaFile[];
   images: string[];
   metalQuality: string;
   metalColor: string;
   diamondQuality: string;
   diamondTone: string;
+  diamondOptions: DiamondOption[];
   sizes: string[];
   metalGrossWeight: number;
   diamondWeight: number;
@@ -60,15 +74,15 @@ const categories = {
   'Sets': ['Bridal Sets', 'Necklace Sets', 'Earring Sets', 'Complete Sets']
 };
 
-// Define a new, more specific type for the size master list
 type SizeMasterList = {
   [key in keyof typeof categories]: string[];
 };
 
-// Correctly define the initial state as a simple, non-memoized function
 const getInitialNewProductState = (): Partial<JewelryProduct> => ({
   name: '',
   images: [],
+  media: [],
+  diamondOptions: [],
   metalQuality: '',
   metalColor: '',
   diamondQuality: '',
@@ -102,8 +116,140 @@ const getInitialNewProductState = (): Partial<JewelryProduct> => ({
   rating: 0
 });
 
-// Define AddProductModal outside of the Products component to prevent re-rendering issues
-const AddProductModal = React.memo(({
+interface EnhancedDropdownProps {
+  name: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  optionType: string;
+  placeholder: string;
+  className?: string;
+  options: string[];
+  addCustomOption: (optionType: string, newValue: string) => boolean;
+}
+
+const EnhancedDropdown: FC<EnhancedDropdownProps> = memo(({
+  name,
+  value,
+  onChange,
+  optionType,
+  placeholder,
+  className,
+  options,
+  addCustomOption
+}) => {
+  const [showAddNew, setShowAddNew] = useState(false);
+  const [newOptionValue, setNewOptionValue] = useState('');
+
+  const handleAddNewOption = useCallback(() => {
+    if (newOptionValue.trim()) {
+      const success = addCustomOption(optionType, newOptionValue);
+      if (success) {
+        const syntheticEvent = {
+          target: { name, value: newOptionValue.trim() }
+        } as React.ChangeEvent<HTMLSelectElement>;
+        onChange(syntheticEvent);
+        setNewOptionValue('');
+        setShowAddNew(false);
+      } else {
+        alert('This option already exists!');
+      }
+    }
+  }, [newOptionValue, addCustomOption, optionType, name, onChange]);
+
+  return (
+    <div className="space-y-2">
+      <select
+        name={name}
+        value={value}
+        onChange={(e) => {
+          if (e.target.value === '__ADD_NEW__') {
+            setShowAddNew(true);
+          } else {
+            onChange(e);
+          }
+        }}
+        className={className || "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"}
+      >
+        <option value="">{placeholder}</option>
+        {options.map(option => (
+          <option key={option} value={option}>{option}</option>
+        ))}
+        <option value="__ADD_NEW__" className="text-blue-600 font-medium">+ Add New {optionType.replace(/([A-Z])/g, ' $1').toLowerCase()}</option>
+      </select>
+
+      {showAddNew && (
+        <div className="flex items-center space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <input
+            type="text"
+            value={newOptionValue}
+            onChange={(e) => setNewOptionValue(e.target.value)}
+            placeholder={`Enter new ${optionType.replace(/([A-Z])/g, ' $1').toLowerCase()}`}
+            className="flex-1 px-3 py-2 border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                handleAddNewOption();
+              }
+            }}
+          />
+          <button
+            type="button"
+            onClick={handleAddNewOption}
+            className="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 text-sm"
+          >
+            Add
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setShowAddNew(false);
+              setNewOptionValue('');
+            }}
+            className="text-gray-500 hover:text-gray-700 p-1"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+});
+
+EnhancedDropdown.displayName = 'EnhancedDropdown';
+
+interface AddProductModalProps {
+  show: boolean;
+  onClose: () => void;
+  editingProduct: JewelryProduct | null;
+  newProduct: Partial<JewelryProduct>;
+  setNewProduct: React.Dispatch<React.SetStateAction<Partial<JewelryProduct>>>;
+  imagePreviewUrls: string[];
+  setImagePreviewUrls: React.Dispatch<React.SetStateAction<string[]>>;
+  selectedImages: File[];
+  setSelectedImages: React.Dispatch<React.SetStateAction<File[]>>;
+  onAddProduct: () => void;
+  getAvailableSizes: () => string[];
+  handleSizeToggle: (size: string) => void;
+  sizeMasterList: SizeMasterList;
+  setSizeMasterList: React.Dispatch<React.SetStateAction<SizeMasterList>>;
+  activeTab: string;
+  setActiveTab: React.Dispatch<React.SetStateAction<string>>;
+  metalTypes: { [key: string]: string[] };
+  categories: { [key: string]: string[] };
+  metalQualities: string[];
+  metalColors: string[];
+  diamondQualities: string[];
+  diamondTones: string[];
+  shapes: string[];
+  occasions: string[];
+  genders: string[];
+  settingTypes: string[];
+  stoneCuts: string[];
+  customOptions: { [key: string]: string[] };
+  addCustomOption: (optionType: string, newValue: string) => boolean;
+  getAllOptions: (optionType: string) => string[];
+}
+
+const AddProductModal: FC<AddProductModalProps> = memo(({
   show,
   onClose,
   editingProduct,
@@ -127,44 +273,14 @@ const AddProductModal = React.memo(({
   diamondQualities,
   diamondTones,
   shapes,
-  certifications,
   occasions,
   genders,
   settingTypes,
   stoneCuts,
-  calculateTotalPrice
-}: {
-    show: boolean;
-    onClose: () => void;
-    editingProduct: JewelryProduct | null;
-    newProduct: Partial<JewelryProduct>;
-    setNewProduct: React.Dispatch<React.SetStateAction<Partial<JewelryProduct>>>;
-    imagePreviewUrls: string[];
-    setImagePreviewUrls: React.Dispatch<React.SetStateAction<string[]>>;
-    selectedImages: File[];
-    setSelectedImages: React.Dispatch<React.SetStateAction<File[]>>;
-    onAddProduct: () => void;
-    getAvailableSizes: () => string[];
-    handleSizeToggle: (size: string) => void;
-    sizeMasterList: SizeMasterList; // Use the new type here
-    setSizeMasterList: React.Dispatch<React.SetStateAction<SizeMasterList>>; // And here
-    activeTab: string;
-    setActiveTab: React.Dispatch<React.SetStateAction<string>>;
-    metalTypes: { [key: string]: string[] };
-    categories: { [key: string]: string[] };
-    metalQualities: string[];
-    metalColors: string[];
-    diamondQualities: string[];
-    diamondTones: string[];
-    shapes: string[];
-    certifications: string[];
-    occasions: string[];
-    genders: string[];
-    settingTypes: string[];
-    stoneCuts: string[];
-    calculateTotalPrice: (tier: PricingTier) => number;
-  }) => {
-
+  customOptions,
+  addCustomOption,
+  getAllOptions
+}) => {
   const [newSizeInput, setNewSizeInput] = useState('');
   const [showAddSizeInput, setShowAddSizeInput] = useState(false);
 
@@ -184,28 +300,62 @@ const AddProductModal = React.memo(({
     setNewProduct(prev => ({ ...prev, rating }));
   }, [setNewProduct]);
 
-  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const getMediaType = (file: File): 'image' | 'video' | 'gif' => {
+    if (file.type.startsWith('video/')) return 'video';
+    if (file.name.toLowerCase().endsWith('.gif') || file.type === 'image/gif') return 'gif';
+    return 'image';
+  };
+
+  const handleMediaUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
-    setSelectedImages(files);
-    const previewUrls = files.map(file => URL.createObjectURL(file));
-    setImagePreviewUrls(previewUrls);
-    setNewProduct(prev => ({ ...prev, images: [...(prev.images || []), ...files.map(file => URL.createObjectURL(file))] }));
-  }, [setSelectedImages, setImagePreviewUrls, setNewProduct]);
 
-  const removeImage = useCallback((index: number) => {
-    const newUrls = imagePreviewUrls.filter((_, i) => i !== index);
-    const newFiles = selectedImages.filter((_, i) => i !== index);
-    setSelectedImages(newFiles);
-    setImagePreviewUrls(newUrls);
-    setNewProduct(prev => ({ ...prev, images: newUrls }));
+    const newMediaFiles: MediaFile[] = files.map(file => ({
+      id: crypto.randomUUID(),
+      url: URL.createObjectURL(file),
+      type: getMediaType(file),
+      file
+    }));
+
+    setNewProduct(prev => ({
+      ...prev,
+      media: [...(prev.media || []), ...newMediaFiles],
+      images: [...(prev.images || []), ...newMediaFiles.map(m => m.url)]
+    }));
+
+    const allFiles = [...selectedImages, ...files];
+    const allUrls = [...imagePreviewUrls, ...newMediaFiles.map(m => m.url)];
+    setSelectedImages(allFiles);
+    setImagePreviewUrls(allUrls);
+  }, [selectedImages, imagePreviewUrls, setSelectedImages, setImagePreviewUrls, setNewProduct]);
+
+  const removeMedia = useCallback((mediaId: string) => {
+    setNewProduct(prev => {
+      const updatedMedia = (prev.media || []).filter(m => m.id !== mediaId);
+      const removedMedia = (prev.media || []).find(m => m.id === mediaId);
+
+      if (removedMedia) {
+        if (removedMedia.url.startsWith('blob:')) {
+          URL.revokeObjectURL(removedMedia.url);
+        }
+        const newUrls = imagePreviewUrls.filter(url => url !== removedMedia.url);
+        const newFiles = selectedImages.filter((_, i) => imagePreviewUrls[i] !== removedMedia.url);
+        setImagePreviewUrls(newUrls);
+        setSelectedImages(newFiles);
+      }
+
+      return {
+        ...prev,
+        media: updatedMedia,
+        images: updatedMedia.map(m => m.url)
+      };
+    });
   }, [selectedImages, imagePreviewUrls, setSelectedImages, setImagePreviewUrls, setNewProduct]);
 
   const handlePricingTierChange = useCallback((id: string, field: keyof PricingTier, value: string | number) => {
     const updatedTiers = (newProduct.pricingTiers || []).map(tier => {
       if (tier.id === id) {
-        const updatedTier = { ...tier, [field]: typeof value === 'string' && !['metalName', 'metalSubCategory'].includes(field) ? Number(value) : value };
-        return updatedTier;
+        return { ...tier, [field]: value };
       }
       return tier;
     });
@@ -216,11 +366,7 @@ const AddProductModal = React.memo(({
     const newTier: PricingTier = {
       id: crypto.randomUUID(),
       metalName: 'Gold',
-      metalSubCategory: '14K',
-      pricePerGram: 0,
-      weight: 0,
-      makingCharges: 0,
-      gstRate: 3
+      metalSubCategory: '14K'
     };
     setNewProduct(prev => ({ ...prev, pricingTiers: [...(prev.pricingTiers || []), newTier] }));
   }, [setNewProduct]);
@@ -229,6 +375,33 @@ const AddProductModal = React.memo(({
     const updatedTiers = (newProduct.pricingTiers || []).filter(tier => tier.id !== id);
     setNewProduct(prev => ({ ...prev, pricingTiers: updatedTiers }));
   }, [newProduct.pricingTiers, setNewProduct]);
+
+  const addDiamondOption = useCallback(() => {
+    const newDiamondOption: DiamondOption = {
+      id: crypto.randomUUID(),
+      quality: 'VVS1',
+      count: 1,
+      shape: 'Round Brilliant',
+      weight: 0.5,
+      isMain: (newProduct.diamondOptions || []).length === 0
+    };
+    setNewProduct(prev => ({ ...prev, diamondOptions: [...(prev.diamondOptions || []), newDiamondOption] }));
+  }, [newProduct.diamondOptions, setNewProduct]);
+
+  const removeDiamondOption = useCallback((id: string) => {
+    const updatedOptions = (newProduct.diamondOptions || []).filter(option => option.id !== id);
+    setNewProduct(prev => ({ ...prev, diamondOptions: updatedOptions }));
+  }, [newProduct.diamondOptions, setNewProduct]);
+
+  const handleDiamondOptionChange = useCallback((id: string, field: keyof DiamondOption, value: string | number | boolean) => {
+    const updatedOptions = (newProduct.diamondOptions || []).map(option => {
+      if (option.id === id) {
+        return { ...option, [field]: value };
+      }
+      return option;
+    });
+    setNewProduct(prev => ({ ...prev, diamondOptions: updatedOptions }));
+  }, [newProduct.diamondOptions, setNewProduct]);
 
   const handleAddNewSize = useCallback(() => {
     if (newSizeInput.trim() && newProduct.category) {
@@ -246,11 +419,12 @@ const AddProductModal = React.memo(({
     setNewProduct(prev => ({ ...prev, tags }));
   }, [setNewProduct]);
 
-  const getSubCategories = () => {
-    return (newProduct.category === 'All' || !newProduct.category) ? [] : categories[newProduct.category as keyof typeof categories] || [];
-  };
+  const getSubCategories = useCallback(() => {
+    if (!newProduct.category) return [];
+    return categories[newProduct.category as keyof typeof categories] || [];
+  }, [newProduct.category]);
 
-  const renderStars = (rating: number, interactive: boolean = false) => {
+  const renderStars = useCallback((rating: number, interactive: boolean = false) => {
     return (
       <div className="flex items-center space-x-1">
         {[1, 2, 3, 4, 5].map((star) => (
@@ -273,8 +447,8 @@ const AddProductModal = React.memo(({
         )}
       </div>
     );
-  };
-  
+  }, [handleRatingChange]);
+
   if (!show) return null;
 
   return (
@@ -295,7 +469,6 @@ const AddProductModal = React.memo(({
                 { id: 'basic', label: 'Basic Info', icon: FileText },
                 { id: 'specifications', label: 'Specifications', icon: Gem },
                 { id: 'pricing', label: 'Pricing & Tiers', icon: DollarSign },
-                { id: 'certifications', label: 'Certifications', icon: Award },
                 { id: 'customization', label: 'Customization', icon: Palette },
                 { id: 'additional', label: 'Additional Info', icon: Settings }
               ].map((tab) => {
@@ -387,27 +560,27 @@ const AddProductModal = React.memo(({
                 )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
-                  <select
+                  <EnhancedDropdown
                     name="gender"
                     value={newProduct.gender || ''}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                  >
-                    <option value="">Select Gender</option>
-                    {genders.map(gender => (<option key={gender} value={gender}>{gender}</option>))}
-                  </select>
+                    onChange={handleInputChange as any}
+                    optionType="genders"
+                    placeholder="Select Gender"
+                    options={getAllOptions('genders')}
+                    addCustomOption={addCustomOption}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Occasion</label>
-                  <select
+                  <EnhancedDropdown
                     name="occasion"
                     value={newProduct.occasion || ''}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                  >
-                    <option value="">Select Occasion</option>
-                    {occasions.map(occasion => (<option key={occasion} value={occasion}>{occasion}</option>))}
-                  </select>
+                    onChange={handleInputChange as any}
+                    optionType="occasions"
+                    placeholder="Select Occasion"
+                    options={getAllOptions('occasions')}
+                    addCustomOption={addCustomOption}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Stock Quantity</label>
@@ -433,35 +606,61 @@ const AddProductModal = React.memo(({
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Product Images *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Product Media *</label>
                 <div className="space-y-4">
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-amber-400 transition-colors">
                     <input
                       type="file"
                       multiple
-                      accept="image/*"
-                      onChange={handleImageUpload}
+                      accept="image/*,video/*,.gif"
+                      onChange={handleMediaUpload}
                       className="hidden"
-                      id="image-upload"
+                      id="media-upload"
                     />
-                    <label htmlFor="image-upload" className="cursor-pointer">
+                    <label htmlFor="media-upload" className="cursor-pointer">
                       <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                      <p className="text-sm text-gray-600">Click to upload images</p>
-                      <p className="text-xs text-gray-500">PNG, JPG up to 10MB each</p>
+                      <p className="text-sm text-gray-600">Click to upload images, videos, or GIFs</p>
+                      <p className="text-xs text-gray-500">PNG, JPG, MP4, MOV, GIF up to 50MB each</p>
                     </label>
                   </div>
-                  {imagePreviewUrls.length > 0 && (
+                  {(newProduct.media || []).length > 0 && (
                     <div className="grid grid-cols-3 gap-4">
-                      {imagePreviewUrls.map((url, index) => (
-                        <div key={url} className="relative">
-                          <img
-                            src={url}
-                            alt={`Preview ${index + 1}`}
-                            className="w-full h-24 object-cover rounded-lg border"
-                          />
+                      {(newProduct.media || []).map((media) => (
+                        <div key={media.id} className="relative">
+                          {media.type === 'video' ? (
+                            <div className="relative">
+                              <video
+                                src={media.url}
+                                className="w-full h-24 object-cover rounded-lg border"
+                                controls={false}
+                                muted
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded-lg">
+                                <Play className="h-8 w-8 text-white" />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="relative">
+                              <img
+                                src={media.url}
+                                alt={`Preview ${media.type}`}
+                                className="w-full h-24 object-cover rounded-lg border"
+                              />
+                              {media.type === 'gif' && (
+                                <div className="absolute top-1 left-1 bg-purple-500 text-white text-xs px-1 rounded">
+                                  GIF
+                                </div>
+                              )}
+                              {media.type === 'image' && (
+                                <div className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-1 rounded">
+                                  <ImageIcon className="h-3 w-3" />
+                                </div>
+                              )}
+                            </div>
+                          )}
                           <button
                             type="button"
-                            onClick={() => removeImage(index)}
+                            onClick={() => removeMedia(media.id)}
                             className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
                           >
                             ×
@@ -483,10 +682,6 @@ const AddProductModal = React.memo(({
                   placeholder="Detailed description of the jewelry piece..."
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Product Rating</label>
-                {renderStars(newProduct.rating || 0, true)}
-              </div>
             </div>
           )}
           {activeTab === 'specifications' && (
@@ -496,41 +691,41 @@ const AddProductModal = React.memo(({
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     <Gem className="inline h-4 w-4 mr-1" /> Metal Quality
                   </label>
-                  <select
+                  <EnhancedDropdown
                     name="metalQuality"
                     value={newProduct.metalQuality || ''}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                  >
-                    <option value="">Select Metal Quality</option>
-                    {metalQualities.map(quality => (<option key={quality} value={quality}>{quality}</option>))}
-                  </select>
+                    onChange={handleInputChange as any}
+                    optionType="metalQualities"
+                    placeholder="Select Metal Quality"
+                    options={getAllOptions('metalQualities')}
+                    addCustomOption={addCustomOption}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     <Palette className="inline h-4 w-4 mr-1" /> Metal Color
                   </label>
-                  <select
+                  <EnhancedDropdown
                     name="metalColor"
                     value={newProduct.metalColor || ''}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                  >
-                    <option value="">Select Metal Color</option>
-                    {metalColors.map(color => (<option key={color} value={color}>{color}</option>))}
-                  </select>
+                    onChange={handleInputChange as any}
+                    optionType="metalColors"
+                    placeholder="Select Metal Color"
+                    options={getAllOptions('metalColors')}
+                    addCustomOption={addCustomOption}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Diamond Quality</label>
-                  <select
+                  <EnhancedDropdown
                     name="diamondQuality"
                     value={newProduct.diamondQuality || ''}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                  >
-                    <option value="">Select Diamond Quality</option>
-                    {diamondQualities.map(quality => (<option key={quality} value={quality}>{quality}</option>))}
-                  </select>
+                    onChange={handleInputChange as any}
+                    optionType="diamondQualities"
+                    placeholder="Select Diamond Quality"
+                    options={getAllOptions('diamondQualities')}
+                    addCustomOption={addCustomOption}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Diamond Tone</label>
@@ -546,15 +741,15 @@ const AddProductModal = React.memo(({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Shape</label>
-                  <select
+                  <EnhancedDropdown
                     name="shape"
                     value={newProduct.shape || ''}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                  >
-                    <option value="">Select Shape</option>
-                    {shapes.map(shape => (<option key={shape} value={shape}>{shape}</option>))}
-                  </select>
+                    onChange={handleInputChange as any}
+                    optionType="shapes"
+                    placeholder="Select Shape"
+                    options={getAllOptions('shapes')}
+                    addCustomOption={addCustomOption}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Setting Type</label>
@@ -719,6 +914,157 @@ const AddProductModal = React.memo(({
                   </div>
                 )}
               </div>
+
+              {/* Diamond Options Section */}
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">
+                    <Gem className="inline h-5 w-5 mr-2" />
+                    Diamond Options
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={addDiamondOption}
+                    className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Add Diamond Option</span>
+                  </button>
+                </div>
+
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
+                  <h4 className="text-sm font-medium text-purple-800 mb-2">Multiple Diamond Configurations</h4>
+                  <p className="text-sm text-purple-700">Add multiple diamond options with different qualities, counts, shapes, and weights. The first option will be marked as the main diamond.</p>
+                </div>
+
+                {(newProduct.diamondOptions || []).map((diamond, index) => (
+                  <div key={diamond.id} className="border border-gray-200 rounded-lg p-4 mb-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-md font-medium text-gray-900 flex items-center">
+                        Diamond Option {index + 1}
+                        {diamond.isMain && (
+                          <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                            Main Diamond
+                          </span>
+                        )}
+                      </h4>
+                      <div className="flex items-center space-x-2">
+                        {!diamond.isMain && (
+                          <button
+                            type="button"
+                            onClick={() => handleDiamondOptionChange(diamond.id, 'isMain', true)}
+                            className="text-purple-600 hover:text-purple-800 text-sm"
+                          >
+                            Set as Main
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeDiamondOption(diamond.id)}
+                          className="text-red-600 hover:text-red-800 p-1"
+                          title="Remove Diamond Option"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Quality</label>
+                        <select
+                          value={diamond.quality}
+                          onChange={(e) => {
+                            if (e.target.value === '__ADD_NEW__') {
+                              const newQuality = prompt('Enter new diamond quality (e.g., "FL+", "VVS0"):');
+                              if (newQuality) {
+                                if (addCustomOption('diamondQualities', newQuality)) {
+                                  handleDiamondOptionChange(diamond.id, 'quality', newQuality);
+                                } else {
+                                  alert('This quality already exists or is invalid!');
+                                }
+                              }
+                            } else {
+                              handleDiamondOptionChange(diamond.id, 'quality', e.target.value);
+                            }
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        >
+                          {getAllOptions('diamondQualities').map(quality => (
+                            <option key={quality} value={quality}>{quality}</option>
+                          ))}
+                          <option value="__ADD_NEW__" className="text-blue-600 font-medium">+ Add New Quality</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Count</label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={diamond.count}
+                          onChange={(e) => handleDiamondOptionChange(diamond.id, 'count', Number(e.target.value))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          placeholder="1"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Shape</label>
+                        <select
+                          value={diamond.shape}
+                          onChange={(e) => {
+                            if (e.target.value === '__ADD_NEW__') {
+                              const newShape = prompt('Enter new diamond shape (e.g., "Trillion", "Baguette"):');
+                              if (newShape) {
+                                if (addCustomOption('shapes', newShape)) {
+                                  handleDiamondOptionChange(diamond.id, 'shape', newShape);
+                                } else {
+                                  alert('This shape already exists or is invalid!');
+                                }
+                              }
+                            } else {
+                              handleDiamondOptionChange(diamond.id, 'shape', e.target.value);
+                            }
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        >
+                          {getAllOptions('shapes').map(shape => (
+                            <option key={shape} value={shape}>{shape}</option>
+                          ))}
+                          <option value="__ADD_NEW__" className="text-blue-600 font-medium">+ Add New Shape</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Weight (ct)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={diamond.weight}
+                          onChange={(e) => handleDiamondOptionChange(diamond.id, 'weight', Number(e.target.value))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          placeholder="0.50"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                      <p className="text-sm text-gray-600">
+                        <strong>Summary:</strong> {diamond.count} × {diamond.shape} {diamond.quality} diamond{diamond.count > 1 ? 's' : ''}, {diamond.weight}ct total
+                      </p>
+                    </div>
+                  </div>
+                ))}
+
+                {(!newProduct.diamondOptions || newProduct.diamondOptions.length === 0) && (
+                  <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
+                    <Gem className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                    <p>No diamond options added yet. Click &quot;Add Diamond Option&quot; to get started.</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -736,8 +1082,8 @@ const AddProductModal = React.memo(({
                 </button>
               </div>
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                <h4 className="text-sm font-medium text-amber-800 mb-2">Dynamic Pricing Information</h4>
-                <p className="text-sm text-amber-700">Set different prices for different metal qualities. When customers select a metal type on the frontend, the price will automatically update based on these tiers. Include base price, making charges, and GST rate.</p>
+                <h4 className="text-sm font-medium text-amber-800 mb-2">Metal Selection Information</h4>
+                <p className="text-sm text-amber-700">Set different metal types and qualities. When customers select a metal type on the frontend, they can choose from these available options.</p>
               </div>
               {(newProduct.pricingTiers || []).map((tier) => (
                 <div key={tier.id} className="border border-gray-200 rounded-lg p-4">
@@ -752,7 +1098,7 @@ const AddProductModal = React.memo(({
                       </button>
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Metal Name</label>
                       <select
@@ -780,141 +1126,15 @@ const AddProductModal = React.memo(({
                         {(metalTypes[tier.metalName as keyof typeof metalTypes] || []).map(subCat => (<option key={subCat} value={subCat}>{subCat}</option>))}
                       </select>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Price per Gram (₹)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={tier.pricePerGram === 0 ? '' : tier.pricePerGram}
-                        onChange={(e) => handlePricingTierChange(tier.id, 'pricePerGram', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                        placeholder="5000"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Weight (Grams)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={tier.weight === 0 ? '' : tier.weight}
-                        onChange={(e) => handlePricingTierChange(tier.id, 'weight', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                        placeholder="3.5"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Making Charges (₹)</label>
-                      <input
-                        type="number"
-                        value={tier.makingCharges === 0 ? '' : tier.makingCharges}
-                        onChange={(e) => handlePricingTierChange(tier.id, 'makingCharges', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                        placeholder="2000"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">GST Rate (%)</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={tier.gstRate === 0 ? '' : tier.gstRate}
-                        onChange={(e) => handlePricingTierChange(tier.id, 'gstRate', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                        placeholder="3"
-                      />
-                    </div>
-                  </div>
-                  <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-gray-600">
-                          <strong>Base Price:</strong> ₹{(tier.pricePerGram * tier.weight).toLocaleString('en-IN')}
-                          <span className="text-xs text-gray-500 ml-2">(₹{tier.pricePerGram}/g × {tier.weight}g)</span>
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-gray-600">
-                          <strong>Total Price:</strong> ₹{calculateTotalPrice(tier).toLocaleString('en-IN')}
-                          <span className="text-xs text-gray-500 ml-2">(Base + Making + GST)</span>
-                        </p>
-                      </div>
-                    </div>
                   </div>
                 </div>
               ))}
               {(!newProduct.pricingTiers || newProduct.pricingTiers.length === 0) && (
                 <div className="text-center py-8 text-gray-500">
                   <DollarSign className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                  <p>No pricing tiers added yet. Click "Add Pricing Tier" to get started.</p>
+                  <p>No pricing tiers added yet. Click &quot;Add Pricing Tier&quot; to get started.</p>
                 </div>
               )}
-            </div>
-          )}
-
-          {activeTab === 'certifications' && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Shield className="inline h-4 w-4 mr-1" /> Diamond Certification
-                  </label>
-                  <select
-                    name="diamondCertification"
-                    value={newProduct.diamondCertification || ''}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                  >
-                    <option value="">Select Certification</option>
-                    {certifications.map(cert => (<option key={cert} value={cert}>{cert}</option>))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Award className="inline h-4 w-4 mr-1" /> Gold Certification
-                  </label>
-                  <select
-                    name="goldCertification"
-                    value={newProduct.goldCertification || ''}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                  >
-                    <option value="">Select Certification</option>
-                    <option value="BIS Hallmarked">BIS Hallmarked</option>
-                    <option value="NABL Certified">NABL Certified</option>
-                    <option value="International Hallmark">International Hallmark</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Warranty Period</label>
-                  <select
-                    name="warranty"
-                    value={newProduct.warranty || ''}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                  >
-                    <option value="">Select Warranty</option>
-                    <option value="6 Months">6 Months</option>
-                    <option value="1 Year">1 Year</option>
-                    <option value="2 Years">2 Years</option>
-                    <option value="Lifetime">Lifetime</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Return Policy</label>
-                  <select
-                    name="returnPolicy"
-                    value={newProduct.returnPolicy || ''}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                  >
-                    <option value="">Select Return Policy</option>
-                    <option value="7 Days">7 Days</option>
-                    <option value="15 Days">15 Days</option>
-                    <option value="30 Days">30 Days</option>
-                    <option value="No Returns">No Returns</option>
-                  </select>
-                </div>
-              </div>
             </div>
           )}
 
@@ -971,7 +1191,9 @@ const AddProductModal = React.memo(({
   );
 });
 
-const Products: React.FC = () => {
+AddProductModal.displayName = 'AddProductModal';
+
+const Products: FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedSubCategory, setSelectedSubCategory] = useState('All');
@@ -982,11 +1204,33 @@ const Products: React.FC = () => {
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const [editingProduct, setEditingProduct] = useState<JewelryProduct | null>(null);
   const [viewingProduct, setViewingProduct] = useState<JewelryProduct | null>(null);
+  const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);
+
+  const [customOptions, setCustomOptions] = useState<{[key: string]: string[]}>({
+    metalQualities: [],
+    metalColors: [],
+    diamondQualities: [],
+    diamondTones: [],
+    shapes: [],
+    occasions: [],
+    genders: [],
+    settingTypes: [],
+    stoneCuts: []
+  });
+
   const [products, setProducts] = useState<JewelryProduct[]>([
     {
       id: 1,
       name: 'Eternal Solitaire Diamond Ring',
       images: ['https://images.pexels.com/photos/1191531/pexels-photo-1191531.jpeg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop'],
+      media: [
+        { id: 'media-1', url: 'https://images.pexels.com/photos/1191531/pexels-photo-1191531.jpeg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop', type: 'image' },
+        { id: 'media-2', url: 'https://images.pexels.com/photos/1191534/pexels-photo-1191534.jpeg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop', type: 'image' }
+      ],
+      diamondOptions: [
+        { id: 'diamond-1', quality: 'VVS1', count: 1, shape: 'Round Brilliant', weight: 1.5, isMain: true },
+        { id: 'diamond-2', quality: 'VS1', count: 12, shape: 'Round Brilliant', weight: 0.24, isMain: false }
+      ],
       metalQuality: '18K',
       metalColor: 'White Gold',
       diamondQuality: 'VVS1',
@@ -999,9 +1243,9 @@ const Products: React.FC = () => {
       category: 'Rings',
       subCategory: 'Engagement Rings',
       pricingTiers: [
-        { id: 'tier-1-1', metalName: 'Gold', metalSubCategory: '14K', pricePerGram: 4500, weight: 3.2, makingCharges: 15000, gstRate: 3 },
-        { id: 'tier-1-2', metalName: 'Gold', metalSubCategory: '18K', pricePerGram: 5500, weight: 3.2, makingCharges: 18000, gstRate: 3 },
-        { id: 'tier-1-3', metalName: 'Gold', metalSubCategory: '22K', pricePerGram: 6500, weight: 3.2, makingCharges: 22000, gstRate: 3 }
+        { id: 'tier-1-1', metalName: 'Gold', metalSubCategory: '14K' },
+        { id: 'tier-1-2', metalName: 'Gold', metalSubCategory: '18K' },
+        { id: 'tier-1-3', metalName: 'Gold', metalSubCategory: '22K' }
       ],
       stock: 8,
       description: 'A timeless solitaire engagement ring featuring a brilliant round diamond set in premium white gold.',
@@ -1045,46 +1289,70 @@ const Products: React.FC = () => {
   const diamondQualities = ['FL', 'IF', 'VVS1', 'VVS2', 'VS1', 'VS2', 'SI1', 'SI2'];
   const diamondTones = ['D (Colorless)', 'E (Colorless)', 'F (Colorless)', 'G (Near Colorless)', 'H (Near Colorless)', 'I (Near Colorless)', 'J (Near Colorless)'];
   const shapes = ['Round Brilliant', 'Princess', 'Emerald Cut', 'Asscher', 'Oval', 'Marquise', 'Pear', 'Heart', 'Cushion', 'Radiant'];
-  const certifications = ['GIA Certified', 'IGI Certified', 'SSEF Certified', 'Gübelin Certified', 'AGS Certified'];
   const occasions = ['Engagement', 'Wedding', 'Anniversary', 'Birthday', 'Valentine', 'Graduation', 'Everyday'];
   const genders = ['Women', 'Men', 'Unisex'];
   const settingTypes = ['Prong Setting', 'Bezel Setting', 'Pave Setting', 'Channel Setting', 'Halo Setting', 'Tension Setting'];
   const stoneCuts = ['Excellent', 'Very Good', 'Good', 'Fair', 'Poor'];
   const metalTypes = {
-    'Gold': ['9K','14K', '18K', '22K', '24K'],
-    'Silver': ['925 Sterling', '999 Fine', '958 Britannia','900 Coin', '935/960 Argentium'],
+    'Gold': ['9K', '14K', '18K', '22K', '24K'],
+    'Silver': ['925 Sterling', '999 Fine', '958 Britannia', '900 Coin', '935/960 Argentium'],
     'Platinum': ['950 Platinum', '999 Platinum', '900 Platinum'],
     'Diamond Solitaire': ['Natural', 'Lab Grown', '0.25 ct', '0.50 ct', '1.00 ct', '1.50 ct', '2.00 ct'],
     'Diamond Cluster': ['Natural Cluster', 'Lab Grown Cluster', '0.25 ct', '0.50 ct', '1.00 ct', '1.50 ct', '2.00 ct'],
     'Rose Gold': ['14K Rose', '18K Rose', '22K Rose', '24K Rose'],
   };
-  
+
+  const addCustomOption = useCallback((optionType: string, newValue: string) => {
+    if (newValue.trim() && !getAllOptions(optionType).includes(newValue.trim())) {
+      const newOption = newValue.trim();
+      setCustomOptions(prev => ({
+        ...prev,
+        [optionType]: [...prev[optionType], newOption]
+      }));
+      console.log(`New ${optionType} option added:`, newOption);
+      return true;
+    }
+    return false;
+  }, [customOptions]);
+
+  const getAllOptions = useCallback((optionType: string) => {
+    const baseOptions: { [key: string]: string[] } = {
+      metalQualities,
+      metalColors,
+      diamondQualities,
+      diamondTones,
+      shapes,
+      occasions,
+      genders,
+      settingTypes,
+      stoneCuts
+    };
+    return [...(baseOptions[optionType] || []), ...(customOptions[optionType] || [])];
+  }, [metalQualities, metalColors, diamondQualities, diamondTones, shapes, occasions, genders, settingTypes, stoneCuts, customOptions]);
+
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          product.shape.toLowerCase().includes(searchTerm.toLowerCase());
+      product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.shape.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
     const matchesSubCategory = selectedSubCategory === 'All' || product.subCategory === selectedSubCategory;
     return matchesSearch && matchesCategory && matchesSubCategory;
   });
+
   const handleDelete = (id: number) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
       setProducts(products.filter(product => product.id !== id));
     }
   };
+
   const handleAddProduct = () => {
     if (!newProduct.name || !newProduct.sku || !newProduct.category || !newProduct.pricingTiers || newProduct.pricingTiers.length === 0) {
       alert('Please fill in all required fields: Product Name, SKU, Category, and at least one Pricing Tier.');
       return;
     }
-    const isValidPricing = newProduct.pricingTiers.every(tier =>
-      tier.pricePerGram !== undefined && tier.pricePerGram !== null && !isNaN(Number(tier.pricePerGram)) &&
-      tier.weight !== undefined && tier.weight !== null && !isNaN(Number(tier.weight)) &&
-      tier.makingCharges !== undefined && tier.makingCharges !== null && !isNaN(Number(tier.makingCharges)) &&
-      tier.gstRate !== undefined && tier.gstRate !== null && !isNaN(Number(tier.gstRate))
-    );
+    const isValidPricing = newProduct.pricingTiers.every(tier => tier.metalName && tier.metalSubCategory);
     if (!isValidPricing) {
-      alert('Please ensure all pricing tier values are valid numbers.');
+      alert('Please ensure all pricing tiers have metal name and sub-category selected.');
       return;
     }
     const product: JewelryProduct = {
@@ -1106,9 +1374,12 @@ const Products: React.FC = () => {
     setImagePreviewUrls([]);
     setActiveTab('basic');
   };
+
   const handleViewProduct = (product: JewelryProduct) => {
     setViewingProduct(product);
+    setSelectedMediaIndex(0);
   };
+
   const handleEditProduct = (product: JewelryProduct) => {
     setEditingProduct(product);
     const productWithTierIds = {
@@ -1116,12 +1387,22 @@ const Products: React.FC = () => {
       pricingTiers: product.pricingTiers.map(tier => ({
         ...tier,
         id: tier.id || crypto.randomUUID()
-      }))
+      })),
+      diamondOptions: product.diamondOptions?.map(option => ({
+        ...option,
+        id: option.id || crypto.randomUUID()
+      })) || [],
+      media: product.media || []
     };
     setNewProduct(productWithTierIds);
-    setImagePreviewUrls(product.images);
+    if (product.media && product.media.length > 0) {
+      setImagePreviewUrls(product.media.map(m => m.url));
+    } else {
+      setImagePreviewUrls(product.images);
+    }
     setShowAddModal(true);
   };
+
   const handleSizeToggle = useCallback((size: string) => {
     const currentSizes = newProduct.sizes || [];
     if (currentSizes.includes(size)) {
@@ -1130,16 +1411,13 @@ const Products: React.FC = () => {
       setNewProduct(prev => ({ ...prev, sizes: [...currentSizes, size] }));
     }
   }, [newProduct.sizes, setNewProduct]);
+
   const getAvailableSizes = useCallback(() => {
     if (!newProduct.category) return [];
     const category = newProduct.category as keyof SizeMasterList;
     return sizeMasterList[category] || [];
   }, [newProduct.category, sizeMasterList]);
-  const calculateTotalPrice = (tier: PricingTier) => {
-    const basePrice = tier.pricePerGram * tier.weight;
-    const total = basePrice + tier.makingCharges + (basePrice + tier.makingCharges) * tier.gstRate / 100;
-    return total;
-  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Active': return 'bg-green-100 text-green-800';
@@ -1148,35 +1426,10 @@ const Products: React.FC = () => {
       default: return 'bg-gray-100 text-gray-800';
     }
   };
-  const renderStars = (rating: number, interactive: boolean = false) => {
-    return (
-      <div className="flex items-center space-x-1">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <button
-            key={star}
-            type="button"
-            onClick={interactive ? () => {
-                setNewProduct(prev => ({ ...prev, rating: star }));
-            } : undefined}
-            className={`${interactive ? 'cursor-pointer hover:scale-110' : 'cursor-default'} transition-transform`}
-            disabled={!interactive}
-          >
-            <Star
-              className={`h-5 w-5 ${star <= rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
-            />
-          </button>
-        ))}
-        {interactive && (
-          <span className="ml-2 text-sm text-gray-600">
-            {rating > 0 ? `${rating}/5` : 'No rating'}
-          </span>
-        )}
-      </div>
-    );
-  };
+
   const getSubCategories = useCallback(() => {
     return selectedCategory === 'All' ? [] : categories[selectedCategory as keyof typeof categories] || [];
-  }, [selectedCategory, categories]);
+  }, [selectedCategory]);
 
   return (
     <div className="space-y-6">
@@ -1252,7 +1505,7 @@ const Products: React.FC = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Total Value</p>
               <p className="text-2xl font-bold text-gray-900">
-                ₹{((products.reduce((sum, p) => sum + (p.pricingTiers[0] ? calculateTotalPrice(p.pricingTiers[0]) : 0) * p.stock, 0)) / 1000000).toFixed(2)}M
+                ₹{(products.length * 50000 / 1000000).toFixed(1)}M
               </p>
             </div>
             <div className="bg-green-100 p-3 rounded-full">
@@ -1327,14 +1580,45 @@ const Products: React.FC = () => {
                 <tr key={product.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div className="flex items-center">
-                      <img className="h-16 w-16 flex-shrink-0 object-cover rounded-md" src={product.images[0]} alt={product.name} />
+                      <div className="relative h-16 w-16 flex-shrink-0">
+                        {product.media && product.media.length > 0 ? (
+                          <>
+                            {product.media[0].type === 'video' ? (
+                              <div className="relative">
+                                <video
+                                  src={product.media[0].url}
+                                  className="h-16 w-16 object-cover rounded-md"
+                                  muted
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded-md">
+                                  <Play className="h-4 w-4 text-white" />
+                                </div>
+                              </div>
+                            ) : (
+                              <img
+                                className="h-16 w-16 object-cover rounded-md"
+                                src={product.media[0].url}
+                                alt={product.name}
+                              />
+                            )}
+                            {product.media.length > 1 && (
+                              <div className="absolute -bottom-1 -right-1 bg-amber-500 text-white text-xs px-1 py-0.5 rounded-full">
+                                +{product.media.length - 1}
+                              </div>
+                            )}
+                            {product.media[0].type === 'gif' && (
+                              <div className="absolute top-1 left-1 bg-purple-500 text-white text-xs px-1 rounded">
+                                GIF
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <img className="h-16 w-16 object-cover rounded-md" src={product.images[0]} alt={product.name} />
+                        )}
+                      </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">{product.name}</div>
                         <div className="text-sm text-gray-500">{product.sku}</div>
-                        <div className="flex items-center mt-1">
-                          {renderStars(product.rating)}
-                          <span className="text-xs text-gray-500 ml-1">({product.rating})</span>
-                        </div>
                         {product.customizable && (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 mt-1">
                             <Palette className="h-3 w-3 mr-1" />
@@ -1358,6 +1642,11 @@ const Products: React.FC = () => {
                       <div className="text-gray-500">{product.shape}</div>
                       <div className="text-gray-500">{product.diamondQuality} - {product.diamondTone}</div>
                       <div className="text-gray-500 text-xs">{product.settingType}</div>
+                      {product.diamondOptions && product.diamondOptions.length > 0 && (
+                        <div className="text-xs text-purple-600 mt-1">
+                          {product.diamondOptions.length} diamond option{product.diamondOptions.length > 1 ? 's' : ''}
+                        </div>
+                      )}
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -1372,8 +1661,7 @@ const Products: React.FC = () => {
                     <div className="text-sm text-gray-900">
                       {product.pricingTiers.map((tier) => (
                         <div key={tier.id} className="mb-1">
-                          <span className="font-medium">{tier.metalName} {tier.metalSubCategory}:</span>
-                          <span className="ml-1">₹{calculateTotalPrice(tier).toLocaleString('en-IN')}</span>
+                          <span className="font-medium">{tier.metalName} {tier.metalSubCategory}</span>
                         </div>
                       ))}
                     </div>
@@ -1418,6 +1706,7 @@ const Products: React.FC = () => {
                       <button
                         onClick={() => handleDelete(product.id)}
                         className="text-red-600 hover:text-red-900 p-1"
+                        title="Delete Product"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -1461,12 +1750,13 @@ const Products: React.FC = () => {
         diamondQualities={diamondQualities}
         diamondTones={diamondTones}
         shapes={shapes}
-        certifications={certifications}
         occasions={occasions}
         genders={genders}
         settingTypes={settingTypes}
         stoneCuts={stoneCuts}
-        calculateTotalPrice={calculateTotalPrice}
+        customOptions={customOptions}
+        addCustomOption={addCustomOption}
+        getAllOptions={getAllOptions}
       />
 
       {viewingProduct && (
@@ -1483,11 +1773,111 @@ const Products: React.FC = () => {
             <div className="p-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div>
-                  <img
-                    src={viewingProduct.images[0]}
-                    alt={viewingProduct.name}
-                    className="w-full h-64 object-cover rounded-lg"
-                  />
+                  {viewingProduct.media && viewingProduct.media.length > 0 ? (
+                    <div className="space-y-4">
+                      <div className="relative">
+                        {viewingProduct.media[selectedMediaIndex]?.type === 'video' ? (
+                          <video
+                            src={viewingProduct.media[selectedMediaIndex].url}
+                            className="w-full h-64 object-cover rounded-lg"
+                            controls
+                            key={viewingProduct.media[selectedMediaIndex].id}
+                          />
+                        ) : (
+                          <img
+                            src={viewingProduct.media[selectedMediaIndex]?.url || viewingProduct.media[0].url}
+                            alt={viewingProduct.name}
+                            className="w-full h-64 object-cover rounded-lg cursor-zoom-in"
+                            onClick={() => {
+                              console.log('Image clicked for fullscreen view');
+                            }}
+                          />
+                        )}
+
+                        {viewingProduct.media[selectedMediaIndex]?.type === 'gif' && (
+                          <div className="absolute top-2 left-2 bg-purple-500 text-white text-xs px-2 py-1 rounded">
+                            GIF
+                          </div>
+                        )}
+
+                        {viewingProduct.media.length > 1 && (
+                          <>
+                            <button
+                              onClick={() => setSelectedMediaIndex(prev =>
+                                prev === 0 ? viewingProduct.media!.length - 1 : prev - 1
+                              )}
+                              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-opacity"
+                            >
+                              <ChevronLeft className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => setSelectedMediaIndex(prev =>
+                                prev === viewingProduct.media!.length - 1 ? 0 : prev + 1
+                              )}
+                              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-opacity"
+                            >
+                              <ChevronRight className="h-4 w-4" />
+                            </button>
+                          </>
+                        )}
+
+                        {viewingProduct.media.length > 1 && (
+                          <div className="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                            {selectedMediaIndex + 1} / {viewingProduct.media.length}
+                          </div>
+                        )}
+                      </div>
+
+                      {viewingProduct.media.length > 1 && (
+                        <div className="grid grid-cols-6 gap-2">
+                          {viewingProduct.media.map((media, index) => (
+                            <div
+                              key={media.id}
+                              className={`relative cursor-pointer border-2 rounded ${
+                                index === selectedMediaIndex
+                                  ? 'border-amber-500 ring-2 ring-amber-200'
+                                  : 'border-gray-200 hover:border-amber-300'
+                              }`}
+                              onClick={() => setSelectedMediaIndex(index)}
+                            >
+                              {media.type === 'video' ? (
+                                <div className="relative">
+                                  <video
+                                    src={media.url}
+                                    className="w-full h-16 object-cover rounded"
+                                    muted
+                                  />
+                                  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded">
+                                    <Play className="h-3 w-3 text-white" />
+                                  </div>
+                                </div>
+                              ) : (
+                                <img
+                                  src={media.url}
+                                  alt={`Thumbnail ${index + 1}`}
+                                  className="w-full h-16 object-cover rounded"
+                                />
+                              )}
+                              {media.type === 'gif' && (
+                                <div className="absolute top-0 left-0 bg-purple-500 text-white text-xs px-1 rounded">
+                                  GIF
+                                </div>
+                              )}
+                              {index === selectedMediaIndex && (
+                                <div className="absolute inset-0 border-2 border-amber-500 rounded bg-amber-500 bg-opacity-20"></div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <img
+                      src={viewingProduct.images[0]}
+                      alt={viewingProduct.name}
+                      className="w-full h-64 object-cover rounded-lg"
+                    />
+                  )}
                 </div>
                 <div className="space-y-4">
                   <div>
@@ -1496,9 +1886,8 @@ const Products: React.FC = () => {
                   </div>
                   <div className="flex items-center space-x-4">
                     <span className="text-2xl font-bold text-amber-600">
-                      ₹{viewingProduct.pricingTiers[0] ? calculateTotalPrice(viewingProduct.pricingTiers[0]).toLocaleString('en-IN') : 'N/A'}
+                      {viewingProduct.pricingTiers[0] ? `${viewingProduct.pricingTiers[0].metalName} ${viewingProduct.pricingTiers[0].metalSubCategory}` : 'N/A'}
                     </span>
-                    {renderStars(viewingProduct.rating)}
                   </div>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
@@ -1518,6 +1907,32 @@ const Products: React.FC = () => {
                       <p className="text-gray-600">{viewingProduct.metalGrossWeight}g</p>
                     </div>
                   </div>
+
+                  {viewingProduct.diamondOptions && viewingProduct.diamondOptions.length > 0 && (
+                    <div>
+                      <span className="font-medium text-gray-700">Diamond Options:</span>
+                      <div className="mt-2 space-y-2">
+                        {viewingProduct.diamondOptions.map((diamond, index) => (
+                          <div key={diamond.id} className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-sm font-medium text-purple-800">
+                                Option {index + 1}
+                                {diamond.isMain && (
+                                  <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                                    Main
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              {diamond.count} × {diamond.shape} {diamond.quality} diamond{diamond.count > 1 ? 's' : ''}, {diamond.weight}ct total
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div>
                     <span className="font-medium text-gray-700">Certifications:</span>
                     <div className="flex flex-wrap gap-2 mt-1">

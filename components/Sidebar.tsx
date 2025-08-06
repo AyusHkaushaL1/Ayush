@@ -1,11 +1,10 @@
 import React from 'react';
-import { 
-  LayoutDashboard, 
-  Package, 
-  ShoppingCart, 
-  Users, 
+import {
+  LayoutDashboard,
+  Package,
+  ShoppingCart,
+  Users,
   Warehouse,
-  Settings,
   Gem,
   X
 } from 'lucide-react';
@@ -27,9 +26,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'products', label: 'Products', icon: Package },
     { id: 'orders', label: 'Orders', icon: ShoppingCart },
-    // { id: 'customers', label: 'Customers', icon: Users },
     { id: 'inventory', label: 'Inventory', icon: Warehouse },
-    // { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'user', label: 'User Login', icon: Users },
   ];
 
   return (

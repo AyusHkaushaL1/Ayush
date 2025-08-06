@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import { 
-  TrendingUp, 
-  DollarSign, 
-  Package, 
-  Users, 
+import {
+  TrendingUp,
+  DollarSign,
+  Package,
+  Users,
   ShoppingCart,
   AlertTriangle
 } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
-  const [orders, setOrders] = useState([
+  const [orders] = useState([
     { id: '#NK001', customer: 'Priya Sharma', amount: '₹25,000', status: 'Delivered', date: '2024-01-15' },
     { id: '#NK002', customer: 'Rajesh Kumar', amount: '₹15,500', status: 'Processing', date: '2024-01-14' },
     { id: '#NK003', customer: 'Anita Patel', amount: '₹32,000', status: 'Shipped', date: '2024-01-13' },
@@ -19,7 +19,7 @@ const Dashboard: React.FC = () => {
 
   const [customers] = useState([
     'Priya Sharma',
-    'Rajesh Kumar', 
+    'Rajesh Kumar',
     'Anita Patel',
     'Vikram Singh',
     'Meera Reddy'
@@ -112,9 +112,9 @@ const Dashboard: React.FC = () => {
         })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Orders */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">Recent Orders</h2>
           </div>
@@ -168,6 +168,7 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
         </div>
+
       </div>
     </div>
   );
