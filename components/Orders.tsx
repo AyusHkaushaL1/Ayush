@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
-import { Search, Filter, Truck, Package, CheckCircle } from 'lucide-react';
+import { Search, Filter, Truck, Package, CheckCircle, Plus, Check, X, Edit3 } from 'lucide-react';
 
 const Orders: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [availableStatuses, setAvailableStatuses] = useState(['Delivered', 'Processing', 'Shipped', 'Pending', 'Cancelled']);
+  const [editingStatus, setEditingStatus] = useState<string | null>(null);
+  const [newStatusInput, setNewStatusInput] = useState('');
+  const [isAddingNewStatus, setIsAddingNewStatus] = useState<string | null>(null);
   
-  const orders = [
+  const [orders, setOrders] = useState([
     {
       id: '#NK001',
       customer: 'Priya Sharma',
@@ -56,9 +60,25 @@ const Orders: React.FC = () => {
       items: 2,
       paymentMethod: 'Credit Card'
     }
-  ];
+  ]);
 
-  const statuses = ['All', 'Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
+  const allStatuses = ['All', ...availableStatuses];
+
+  const updateOrderStatus = (orderId: string, newStatus: string) => {
+    setOrders(orders.map(order => 
+      order.id === orderId ? { ...order, status: newStatus } : order
+    ));
+  };
+
+  const addNewStatus = (orderId: string, newStatus: string) => {
+    if (newStatus.trim() && !availableStatuses.includes(newStatus.trim())) {
+      const trimmedStatus = newStatus.trim();
+      setAvailableStatuses([...availableStatuses, trimmedStatus]);
+      updateOrderStatus(orderId, trimmedStatus);
+    }
+    setIsAddingNewStatus(null);
+    setNewStatusInput('');
+  };
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -88,6 +108,106 @@ const Orders: React.FC = () => {
     }
   };
 
+  const getOrderCounts = () => {
+    return {
+      total: orders.length,
+      processing: orders.filter(o => o.status === 'Processing').length,
+      shipped: orders.filter(o => o.status === 'Shipped').length,
+      delivered: orders.filter(o => o.status === 'Delivered').length,
+      pending: orders.filter(o => o.status === 'Pending').length
+    };
+  };
+
+  const counts = getOrderCounts();
+
+  const StatusDropdown = ({ order }: { order: any }) => {
+    const isEditing = editingStatus === order.id;
+    const isAddingNew = isAddingNewStatus === order.id;
+
+    if (isAddingNew) {
+      return (
+        <div className="flex items-center space-x-2">
+          <input
+            type="text"
+            value={newStatusInput}
+            onChange={(e) => setNewStatusInput(e.target.value)}
+            placeholder="Enter new status"
+            className="px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-transparent min-w-32"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                addNewStatus(order.id, newStatusInput);
+              } else if (e.key === 'Escape') {
+                setIsAddingNewStatus(null);
+                setNewStatusInput('');
+              }
+            }}
+            autoFocus
+          />
+          <button
+            onClick={() => addNewStatus(order.id, newStatusInput)}
+            className="p-1 text-green-600 hover:text-green-700"
+          >
+            <Check className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => {
+              setIsAddingNewStatus(null);
+              setNewStatusInput('');
+            }}
+            className="p-1 text-red-600 hover:text-red-700"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      );
+    }
+
+    if (isEditing) {
+      return (
+        <select
+          value={order.status}
+          onChange={(e) => {
+            if (e.target.value === '__ADD_NEW__') {
+              setIsAddingNewStatus(order.id);
+              setEditingStatus(null);
+            } else {
+              updateOrderStatus(order.id, e.target.value);
+              setEditingStatus(null);
+            }
+          }}
+          onBlur={() => setEditingStatus(null)}
+          className="px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+          autoFocus
+        >
+          {availableStatuses.map(status => (
+            <option key={status} value={status}>{status}</option>
+          ))}
+          <option value="__ADD_NEW__" className="text-amber-600 font-medium">
+            + Add New Status
+          </option>
+        </select>
+      );
+    }
+
+    return (
+      <div className="relative group">
+        <button
+          onClick={() => setEditingStatus(order.id)}
+          className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(order.status)} hover:opacity-80 hover:shadow-md transition-all duration-200 cursor-pointer border-2 border-transparent hover:border-amber-200`}
+        >
+          {getStatusIcon(order.status)}
+          <span className="ml-1">{order.status}</span>
+          <Edit3 className="h-3 w-3 ml-2 opacity-0 group-hover:opacity-70 transition-opacity duration-200" />
+        </button>
+        <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+          <div className="bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+            Click to edit status
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -95,12 +215,12 @@ const Orders: React.FC = () => {
       </div>
 
       {/* Order Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Orders</p>
-              <p className="text-2xl font-bold text-gray-900">5</p>
+              <p className="text-2xl font-bold text-gray-900">{counts.total}</p>
             </div>
             <div className="bg-blue-100 p-3 rounded-full">
               <Package className="h-6 w-6 text-blue-600" />
@@ -111,8 +231,8 @@ const Orders: React.FC = () => {
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Processing</p>
-              <p className="text-2xl font-bold text-gray-900">1</p>
+              <p className="text-sm font-medium text-gray-600">Pending</p>
+              <p className="text-2xl font-bold text-gray-900">{counts.pending}</p>
             </div>
             <div className="bg-yellow-100 p-3 rounded-full">
               <Package className="h-6 w-6 text-yellow-600" />
@@ -123,8 +243,20 @@ const Orders: React.FC = () => {
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
+              <p className="text-sm font-medium text-gray-600">Processing</p>
+              <p className="text-2xl font-bold text-gray-900">{counts.processing}</p>
+            </div>
+            <div className="bg-blue-100 p-3 rounded-full">
+              <Package className="h-6 w-6 text-blue-600" />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
               <p className="text-sm font-medium text-gray-600">Shipped</p>
-              <p className="text-2xl font-bold text-gray-900">1</p>
+              <p className="text-2xl font-bold text-gray-900">{counts.shipped}</p>
             </div>
             <div className="bg-purple-100 p-3 rounded-full">
               <Truck className="h-6 w-6 text-purple-600" />
@@ -136,7 +268,7 @@ const Orders: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Delivered</p>
-              <p className="text-2xl font-bold text-gray-900">2</p>
+              <p className="text-2xl font-bold text-gray-900">{counts.delivered}</p>
             </div>
             <div className="bg-green-100 p-3 rounded-full">
               <CheckCircle className="h-6 w-6 text-green-600" />
@@ -165,7 +297,7 @@ const Orders: React.FC = () => {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
             >
-              {statuses.map(status => (
+              {allStatuses.map(status => (
                 <option key={status} value={status}>{status}</option>
               ))}
             </select>
@@ -205,7 +337,11 @@ const Orders: React.FC = () => {
                   Payment
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                  <div className="flex items-center space-x-1">
+                    <span>Status</span>
+                    <Edit3 className="h-3 w-3 text-gray-400" />
+                    <span className="text-xs normal-case text-gray-400">(Click to edit)</span>
+                  </div>
                 </th>
               </tr>
             </thead>
@@ -232,10 +368,7 @@ const Orders: React.FC = () => {
                     {order.paymentMethod}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(order.status)}`}>
-                      {getStatusIcon(order.status)}
-                      <span className="ml-1">{order.status}</span>
-                    </span>
+                    <StatusDropdown order={order} />
                   </td>
                 </tr>
               ))}
