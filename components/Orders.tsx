@@ -1,80 +1,123 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Filter, Truck, Package, CheckCircle, Plus, Check, X, Edit3 } from 'lucide-react';
+
+// Interface for the simplified order list view
+interface Order {
+  id: string;
+  customer: string;
+  email: string;
+  date: string;
+  total: number;
+  status: string;
+  items: number;
+  paymentMethod: string;
+}
 
 const Orders: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
-  const [availableStatuses, setAvailableStatuses] = useState(['Delivered', 'Processing', 'Shipped', 'Pending', 'Cancelled']);
+  const [availableStatuses, setAvailableStatuses] = useState<string[]>([]);
   const [editingStatus, setEditingStatus] = useState<string | null>(null);
   const [newStatusInput, setNewStatusInput] = useState('');
   const [isAddingNewStatus, setIsAddingNewStatus] = useState<string | null>(null);
   
-  const [orders, setOrders] = useState([
-    {
-      id: '#NK001',
-      customer: 'Priya Sharma',
-      email: 'priya.sharma@email.com',
-      date: '2025-02-15',
-      total: 25000,
-      status: 'Delivered',
-      items: 2,
-      paymentMethod: 'Credit Card'
-    },
-    {
-      id: '#NK002',
-      customer: 'Rajesh Kumar',
-      email: 'rajesh.kumar@email.com',
-      date: '2025-03-04',
-      total: 15500,
-      status: 'Processing',
-      items: 1,
-      paymentMethod: 'UPI'
-    },
-    {
-      id: '#NK003',
-      customer: 'Anita Patel',
-      email: 'anita.patel@email.com',
-      date: '2025-04-13',
-      total: 32000,
-      status: 'Shipped',
-      items: 3,
-      paymentMethod: 'Net Banking'
-    },
-    {
-      id: '#NK004',
-      customer: 'Vikram Singh',
-      email: 'vikram.singh@email.com',
-      date: '2025-05-23',
-      total: 18750,
-      status: 'Pending',
-      items: 1,
-      paymentMethod: 'Cash on Delivery'
-    },
-    {
-      id: '#NK005',
-      customer: 'Meera Reddy',
-      email: 'meera.reddy@email.com',
-      date: '2025-06-11',
-      total: 42000,
-      status: 'Delivered',
-      items: 2,
-      paymentMethod: 'Credit Card'
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+
+  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4Nzk0MmJlYmI0MTJlMmM5NTA3MjljMyIsImlhdCI6MTc1NTEyMDU5NiwiZXhwIjoxNzU1NzI1Mzk2fQ.xAJeLFg5zZ4m8fdECyu-NZN9bOoBCqgw0iUyMWVO1zg';
+
+  const apiListUrl = '/api/admin/orders';
+  const apiStatusUpdateUrl = (orderId: string) => `/api/admin/orders/${orderId}/status`;
+
+  const fetchOrders = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(apiListUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json' 
+        },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`API error: ${response.status} - ${errorData.message || 'Unknown error'}`);
+      }
+      
+      const responseData = await response.json();
+      
+      const ordersArray: Order[] = responseData.orders.map((apiOrder: any) => ({
+        id: apiOrder._id,
+        customer: apiOrder.user?.name || 'N/A',
+        email: apiOrder.user?.email || 'N/A',
+        date: apiOrder.placedAt,
+        total: apiOrder.totalAmount,
+        status: apiOrder.status,
+        items: apiOrder.items?.length || 0,
+        paymentMethod: apiOrder.paymentInfo?.method || 'N/A'
+      }));
+
+      if (!Array.isArray(ordersArray)) {
+        throw new Error("API response is not an array of orders. Please check the API documentation.");
+      }
+
+      setOrders(ordersArray);
+      const uniqueStatuses = Array.from(new Set(ordersArray.map(order => order.status)));
+      setAvailableStatuses(uniqueStatuses.filter(s => s));
+
+    } catch (e) {
+      setError("Failed to fetch orders: " + (e as Error).message);
+      console.error("Fetching orders failed:", e);
+    } finally {
+      setIsLoading(false);
     }
-  ]);
-
-  const allStatuses = ['All', ...availableStatuses];
-
-  const updateOrderStatus = (orderId: string, newStatus: string) => {
-    setOrders(orders.map(order => 
-      order.id === orderId ? { ...order, status: newStatus } : order
-    ));
   };
+
+  const updateOrderStatusOnApi = async (orderId: string, newStatus: string) => {
+    setUpdatingOrderId(orderId);
+    try {
+      const response = await fetch(apiStatusUpdateUrl(orderId), {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status: newStatus.toLowerCase() }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`API error: ${response.status} - ${errorData.message || 'Unknown error'}`);
+      }
+      
+      setOrders(orders.map(order => 
+        order.id === orderId ? { ...order, status: newStatus } : order
+      ));
+
+    } catch (e) {
+      setError("Failed to update order status: " + (e as Error).message);
+      console.error("Updating order status failed:", e);
+    } finally {
+      setUpdatingOrderId(null);
+      setEditingStatus(null);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+  
+  const allStatuses = ['All', ...availableStatuses];
 
   const addNewStatus = (orderId: string, newStatus: string) => {
     if (newStatus.trim() && !availableStatuses.includes(newStatus.trim())) {
       const trimmedStatus = newStatus.trim();
       setAvailableStatuses([...availableStatuses, trimmedStatus]);
-      updateOrderStatus(orderId, trimmedStatus);
+      updateOrderStatusOnApi(orderId, trimmedStatus);
     }
     setIsAddingNewStatus(null);
     setNewStatusInput('');
@@ -82,28 +125,31 @@ const Orders: React.FC = () => {
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.email.toLowerCase().includes(searchTerm.toLowerCase());
+                          order.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          order.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'All' || order.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Delivered': return 'bg-green-100 text-green-800';
-      case 'Processing': return 'bg-blue-100 text-blue-800';
-      case 'Shipped': return 'bg-purple-100 text-purple-800';
-      case 'Pending': return 'bg-yellow-100 text-yellow-800';
-      case 'Cancelled': return 'bg-red-100 text-red-800';
+  const getStatusColor = (status: string | undefined) => {
+    if (!status) return 'bg-gray-100 text-gray-800';
+    switch (status.toLowerCase()) {
+      case 'placed': return 'bg-yellow-100 text-yellow-800';
+      case 'delivered': return 'bg-green-100 text-green-800';
+      case 'processing': return 'bg-blue-100 text-blue-800';
+      case 'shipped': return 'bg-purple-100 text-purple-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'Delivered': return <CheckCircle className="h-4 w-4" />;
-      case 'Processing': return <Package className="h-4 w-4" />;
-      case 'Shipped': return <Truck className="h-4 w-4" />;
+  const getStatusIcon = (status: string | undefined) => {
+    if (!status) return null;
+    switch (status.toLowerCase()) {
+      case 'delivered': return <CheckCircle className="h-4 w-4" />;
+      case 'processing': return <Package className="h-4 w-4" />;
+      case 'shipped': return <Truck className="h-4 w-4" />;
       default: return null;
     }
   };
@@ -111,18 +157,19 @@ const Orders: React.FC = () => {
   const getOrderCounts = () => {
     return {
       total: orders.length,
-      processing: orders.filter(o => o.status === 'Processing').length,
-      shipped: orders.filter(o => o.status === 'Shipped').length,
-      delivered: orders.filter(o => o.status === 'Delivered').length,
-      pending: orders.filter(o => o.status === 'Pending').length
+      processing: orders.filter(o => o.status?.toLowerCase() === 'processing').length,
+      shipped: orders.filter(o => o.status?.toLowerCase() === 'shipped').length,
+      delivered: orders.filter(o => o.status?.toLowerCase() === 'delivered').length,
+      pending: orders.filter(o => o.status?.toLowerCase() === 'pending').length
     };
   };
 
   const counts = getOrderCounts();
 
-  const StatusDropdown = ({ order }: { order: any }) => {
+  const StatusDropdown = ({ order }: { order: Order }) => {
     const isEditing = editingStatus === order.id;
     const isAddingNew = isAddingNewStatus === order.id;
+    const isUpdating = updatingOrderId === order.id;
 
     if (isAddingNew) {
       return (
@@ -171,7 +218,7 @@ const Orders: React.FC = () => {
               setIsAddingNewStatus(order.id);
               setEditingStatus(null);
             } else {
-              updateOrderStatus(order.id, e.target.value);
+              updateOrderStatusOnApi(order.id, e.target.value);
               setEditingStatus(null);
             }
           }}
@@ -187,6 +234,14 @@ const Orders: React.FC = () => {
           </option>
         </select>
       );
+    }
+    
+    if (isUpdating) {
+        return (
+            <div className="flex items-center">
+                <span className="animate-pulse text-gray-500">Updating...</span>
+            </div>
+        );
     }
 
     return (
@@ -207,6 +262,22 @@ const Orders: React.FC = () => {
       </div>
     );
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-xl text-gray-500">Loading orders...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-xl text-red-500">{error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
