@@ -1,10 +1,10 @@
-import React, { useState, useCallback, memo, FC } from 'react';
+import React, { useState, useCallback, memo, FC, useEffect } from 'react';
 import { Plus, Search, Filter, Trash2, Upload, X, Star, Award, Gem, Palette, Ruler, Weight, FileText, Shield, DollarSign, Settings, Eye, Edit, Play, Image as ImageIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface MediaFile {
   id: string;
   url: string;
-  type: 'image' | 'video' | 'gif';
+  type: 'image' | 'video' | 'gif' | '3d_model';
   file?: File;
 }
 
@@ -24,7 +24,7 @@ interface PricingTier {
 }
 
 interface JewelryProduct {
-  id: number;
+  id: string;
   name: string;
   media: MediaFile[];
   images: string[];
@@ -64,7 +64,7 @@ interface JewelryProduct {
   tags: string[];
 }
 
-const categories = {
+const hardcodedCategories = {
   'All': [],
   'Rings': ['Engagement Rings', 'Wedding Bands', 'Fashion Rings', 'Eternity Rings', 'Promise Rings'],
   'Necklaces': ['Pendant Necklaces', 'Chain Necklaces', 'Chokers', 'Statement Necklaces', 'Tennis Necklaces'],
@@ -75,7 +75,7 @@ const categories = {
 };
 
 type SizeMasterList = {
-  [key in keyof typeof categories]: string[];
+  [key in keyof typeof hardcodedCategories]: string[];
 };
 
 const getInitialNewProductState = (): Partial<JewelryProduct> => ({
@@ -226,7 +226,7 @@ interface AddProductModalProps {
   setImagePreviewUrls: React.Dispatch<React.SetStateAction<string[]>>;
   selectedImages: File[];
   setSelectedImages: React.Dispatch<React.SetStateAction<File[]>>;
-  onAddProduct: () => void;
+  onAddProduct: (isEditing: boolean) => void;
   getAvailableSizes: () => string[];
   handleSizeToggle: (size: string) => void;
   sizeMasterList: SizeMasterList;
@@ -247,6 +247,13 @@ interface AddProductModalProps {
   customOptions: { [key: string]: string[] };
   addCustomOption: (optionType: string, newValue: string) => boolean;
   getAllOptions: (optionType: string) => string[];
+  apiCategories: string[];
+  onAddCategory: (newCategory: string) => Promise<void>;
+  diamondAttributes: {
+    shapes: string[];
+    cuts: string[];
+    clarities: string[];
+  };
 }
 
 const AddProductModal: FC<AddProductModalProps> = memo(({
@@ -279,10 +286,15 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
   stoneCuts,
   customOptions,
   addCustomOption,
-  getAllOptions
+  getAllOptions,
+  apiCategories,
+  onAddCategory,
+  diamondAttributes
 }) => {
   const [newSizeInput, setNewSizeInput] = useState('');
   const [showAddSizeInput, setShowAddSizeInput] = useState(false);
+  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -300,9 +312,10 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
     setNewProduct(prev => ({ ...prev, rating }));
   }, [setNewProduct]);
 
-  const getMediaType = (file: File): 'image' | 'video' | 'gif' => {
+  const getMediaType = (file: File): 'image' | 'video' | 'gif' | '3d_model' => {
     if (file.type.startsWith('video/')) return 'video';
     if (file.name.toLowerCase().endsWith('.gif') || file.type === 'image/gif') return 'gif';
+    if (file.name.toLowerCase().endsWith('.glb') || file.name.toLowerCase().endsWith('.gltf')) return '3d_model';
     return 'image';
   };
 
@@ -347,7 +360,7 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
       return {
         ...prev,
         media: updatedMedia,
-        images: updatedMedia.map(m => m.url)
+        images: updatedMedia.filter(m => m.type === 'image').map(m => m.url)
       };
     });
   }, [selectedImages, imagePreviewUrls, setSelectedImages, setImagePreviewUrls, setNewProduct]);
@@ -421,8 +434,8 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
 
   const getSubCategories = useCallback(() => {
     if (!newProduct.category) return [];
-    return categories[newProduct.category as keyof typeof categories] || [];
-  }, [newProduct.category]);
+    return categories[newProduct.category as keyof typeof hardcodedCategories] || [];
+  }, [newProduct.category, categories]);
 
   const renderStars = useCallback((rating: number, interactive: boolean = false) => {
     return (
@@ -531,17 +544,58 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
-                  <select
-                    name="category"
-                    value={newProduct.category || ''}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                  >
-                    <option value="">Select Category</option>
-                    {Object.keys(categories).slice(1).map(category => (
-                      <option key={category} value={category}>{category}</option>
-                    ))}
-                  </select>
+                  <div className="space-y-2">
+                    <select
+                      name="category"
+                      value={newProduct.category || ''}
+                      onChange={(e) => {
+                        if (e.target.value === '__ADD_NEW__') {
+                          setShowNewCategoryInput(true);
+                        } else {
+                          handleInputChange(e);
+                          setShowNewCategoryInput(false);
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                    >
+                      <option value="">Select Category</option>
+                      {apiCategories.map(category => (
+                        <option key={category} value={category}>{category}</option>
+                      ))}
+                      <option value="__ADD_NEW__" className="text-blue-600 font-medium">+ Add New Category</option>
+                    </select>
+
+                    {showNewCategoryInput && (
+                      <div className="flex items-center space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <input
+                          type="text"
+                          value={newCategoryName}
+                          onChange={(e) => setNewCategoryName(e.target.value)}
+                          placeholder="Enter new category name"
+                          className="flex-1 px-3 py-2 border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              onAddCategory(newCategoryName);
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => onAddCategory(newCategoryName)}
+                          className="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 text-sm"
+                        >
+                          Add
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowNewCategoryInput(false)}
+                          className="text-gray-500 hover:text-gray-700 p-1"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 {newProduct.category && getSubCategories().length > 0 && (
                   <div>
@@ -552,6 +606,7 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                     >
+                      <option value="">Select Sub Category</option>
                       {getSubCategories().map(subCategory => (
                         <option key={subCategory} value={subCategory}>{subCategory}</option>
                       ))}
@@ -612,15 +667,15 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                     <input
                       type="file"
                       multiple
-                      accept="image/*,video/*,.gif"
+                      accept="image/*,video/*,.gif,.glb,.gltf"
                       onChange={handleMediaUpload}
                       className="hidden"
                       id="media-upload"
                     />
                     <label htmlFor="media-upload" className="cursor-pointer">
                       <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                      <p className="text-sm text-gray-600">Click to upload images, videos, or GIFs</p>
-                      <p className="text-xs text-gray-500">PNG, JPG, MP4, MOV, GIF up to 50MB each</p>
+                      <p className="text-sm text-gray-600">Click to upload images, videos, GIFs or 3D models</p>
+                      <p className="text-xs text-gray-500">PNG, JPG, MP4, MOV, GIF, GLB, GLTF up to 50MB each</p>
                     </label>
                   </div>
                   {(newProduct.media || []).length > 0 && (
@@ -654,6 +709,11 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                               {media.type === 'image' && (
                                 <div className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-1 rounded">
                                   <ImageIcon className="h-3 w-3" />
+                                </div>
+                              )}
+                              {media.type === '3d_model' && (
+                                <div className="absolute top-1 left-1 bg-teal-500 text-white text-xs px-1 rounded">
+                                  3D
                                 </div>
                               )}
                             </div>
@@ -747,7 +807,7 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                     onChange={handleInputChange as any}
                     optionType="shapes"
                     placeholder="Select Shape"
-                    options={getAllOptions('shapes')}
+                    options={diamondAttributes.shapes}
                     addCustomOption={addCustomOption}
                   />
                 </div>
@@ -821,7 +881,7 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                   >
                     <option value="">Select Clarity</option>
-                    {diamondQualities.map(quality => (<option key={quality} value={quality}>{quality}</option>))}
+                    {diamondAttributes.clarities.map(clarity => (<option key={clarity} value={clarity}>{clarity}</option>))}
                   </select>
                 </div>
                 <div>
@@ -833,7 +893,7 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                   >
                     <option value="">Select Cut</option>
-                    {stoneCuts.map(cut => (<option key={cut} value={cut}>{cut}</option>))}
+                    {diamondAttributes.cuts.map(cut => (<option key={cut} value={cut}>{cut}</option>))}
                   </select>
                 </div>
                 <div>
@@ -1090,7 +1150,7 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="text-md font-medium text-gray-900">Metal Pricing Tier</h4>
                     <div className="flex items-center space-x-2">
-                      <button type="button" onClick={() => {}} className="text-amber-600 hover:text-amber-800 p-1" title="Edit Tier">
+                      <button type="button" onClick={() => { }} className="text-amber-600 hover:text-amber-800 p-1" title="Edit Tier">
                         <Edit className="h-4 w-4" />
                       </button>
                       <button type="button" onClick={() => removePricingTier(tier.id)} className="text-red-600 hover:text-red-800 p-1" title="Delete Tier">
@@ -1181,7 +1241,7 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
 
         <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 sticky bottom-0 bg-white">
           <button onClick={onClose} className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
-          <button onClick={onAddProduct} className="px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors flex items-center space-x-2">
+          <button onClick={() => onAddProduct(!!editingProduct)} className="px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors flex items-center space-x-2">
             <Plus className="h-4 w-4" />
             <span>{editingProduct ? 'Update Product' : 'Add Product'}</span>
           </button>
@@ -1192,6 +1252,78 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
 });
 
 AddProductModal.displayName = 'AddProductModal';
+
+
+interface ApiDiamondConfig {
+  diamond: {
+    clarity: string;
+    cut: string;
+    color: string;
+    shape: string;
+    certification: {
+      authority: string;
+      number: string;
+    };
+  };
+  quantity: number;
+  _id: string;
+}
+
+interface ApiMetalConfig {
+  type: string;
+  purity: string;
+  color: string;
+  certification: {
+    authority: string;
+    number: string;
+  };
+  stock: number;
+}
+
+interface ApiVariant {
+  _id: string;
+  SKU: string;
+  media: {
+    images: string[];
+    model3dUrl?: string[];
+    videoUrl?: string;
+  };
+  metalConfig: ApiMetalConfig;
+  diamondConfigs: ApiDiamondConfig[];
+  priceBreakdown: any;
+}
+
+interface ApiProduct {
+  _id: string;
+  title: string;
+  media: {
+    coverImages: string[];
+    model3dUrl?: string[];
+    videoUrl?: string;
+  };
+  variants: ApiVariant[];
+}
+
+interface ProductApiResponse {
+  products: ApiProduct[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+const categories = {
+  'All': [],
+  'Rings': ['Engagement Rings', 'Wedding Bands', 'Fashion Rings', 'Eternity Rings', 'Promise Rings'],
+  'Necklaces': ['Pendant Necklaces', 'Chain Necklaces', 'Chokers', 'Statement Necklaces', 'Tennis Necklaces'],
+  'Earrings': ['Stud Earrings', 'Drop Earrings', 'Hoop Earrings', 'Chandelier Earrings', 'Huggie Earrings'],
+  'Bracelets': ['Tennis Bracelets', 'Chain Bracelets', 'Bangle Bracelets', 'Charm Bracelets', 'Cuff Bracelets'],
+  'Pendants': ['Diamond Pendants', 'Gemstone Pendants', 'Religious Pendants', 'Initial Pendants', 'Heart Pendants'],
+  'Sets': ['Bridal Sets', 'Necklace Sets', 'Earring Sets', 'Complete Sets']
+};
+
 
 const Products: FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -1206,7 +1338,7 @@ const Products: FC = () => {
   const [viewingProduct, setViewingProduct] = useState<JewelryProduct | null>(null);
   const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);
 
-  const [customOptions, setCustomOptions] = useState<{[key: string]: string[]}>({
+  const [customOptions, setCustomOptions] = useState<{ [key: string]: string[] }>({
     metalQualities: [],
     metalColors: [],
     diamondQualities: [],
@@ -1218,58 +1350,200 @@ const Products: FC = () => {
     stoneCuts: []
   });
 
-  const [products, setProducts] = useState<JewelryProduct[]>([
-    {
-      id: 1,
-      name: 'Eternal Solitaire Diamond Ring',
-      images: ['https://images.pexels.com/photos/1191531/pexels-photo-1191531.jpeg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop'],
-      media: [
-        { id: 'media-1', url: 'https://images.pexels.com/photos/1191531/pexels-photo-1191531.jpeg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop', type: 'image' },
-        { id: 'media-2', url: 'https://images.pexels.com/photos/1191534/pexels-photo-1191534.jpeg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop', type: 'image' }
-      ],
-      diamondOptions: [
-        { id: 'diamond-1', quality: 'VVS1', count: 1, shape: 'Round Brilliant', weight: 1.5, isMain: true },
-        { id: 'diamond-2', quality: 'VS1', count: 12, shape: 'Round Brilliant', weight: 0.24, isMain: false }
-      ],
-      metalQuality: '18K',
-      metalColor: 'White Gold',
-      diamondQuality: 'VVS1',
-      diamondTone: 'D (Colorless)',
-      sizes: ['5', '6', '7', '8', '9'],
-      metalGrossWeight: 3.2,
-      diamondWeight: 1.5,
-      sku: 'ESR-18K-001',
-      shape: 'Round Brilliant',
-      category: 'Rings',
-      subCategory: 'Engagement Rings',
-      pricingTiers: [
-        { id: 'tier-1-1', metalName: 'Gold', metalSubCategory: '14K' },
-        { id: 'tier-1-2', metalName: 'Gold', metalSubCategory: '18K' },
-        { id: 'tier-1-3', metalName: 'Gold', metalSubCategory: '22K' }
-      ],
-      stock: 8,
-      description: 'A timeless solitaire engagement ring featuring a brilliant round diamond set in premium white gold.',
-      diamondCertification: 'GIA Certified',
-      goldCertification: 'BIS Hallmarked',
-      sideStones: 'None',
-      status: 'Active',
-      rating: 4.9,
-      customizable: true,
-      createdAt: '2024-01-15',
-      occasion: 'Engagement',
-      gender: 'Women',
-      collection: 'Eternal Collection',
-      stoneClarity: 'VVS1',
-      stoneColor: 'D',
-      stoneCut: 'Excellent',
-      settingType: 'Prong Setting',
-      bandWidth: 2.5,
-      totalDiamonds: 1,
-      warranty: '1 Year',
-      returnPolicy: '30 Days',
-      tags: ['engagement', 'solitaire', 'diamond', 'classic']
+  const [products, setProducts] = useState<JewelryProduct[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [apiCategories, setApiCategories] = useState<{ [key: string]: string[] }>({});
+  const [authToken, setAuthToken] = useState<string>('');
+
+  const [diamondAttributes, setDiamondAttributes] = useState({
+    shapes: [],
+    cuts: [],
+    clarities: [],
+  });
+
+  const fetchDiamondAttributes = async () => {
+    try {
+      const response = await fetch('http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/diamonds/attributes');
+      if (!response.ok) {
+        throw new Error('Failed to fetch diamond attributes');
+      }
+      const data = await response.json();
+      setDiamondAttributes({
+        shapes: data.shapes.map((item: { name: string; }) => item.name),
+        cuts: data.cuts.map((item: { name: string; }) => item.name),
+        clarities: data.clarities.map((item: { name: string; }) => item.name),
+      });
+    } catch (error) {
+      console.error("Error fetching diamond attributes:", error);
     }
-  ]);
+  };
+
+  useEffect(() => {
+    try {
+      const storedCredentials = localStorage.getItem('userCredentials');
+      if (storedCredentials) {
+        const { token } = JSON.parse(storedCredentials);
+        setAuthToken(token);
+      }
+    } catch (e) {
+      console.error('Failed to parse user credentials from localStorage');
+    }
+  }, []);
+
+  const fetchProducts = useCallback(async () => {
+    if (!authToken) {
+      setIsLoading(false);
+      setError('Authentication token not found. Please log in.');
+      return;
+    }
+    try {
+      setIsLoading(true);
+      const response = await fetch('http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/products', {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      const data: ProductApiResponse = await response.json();
+
+      const transformedProducts: JewelryProduct[] = data.products.map((apiProduct) => {
+        const mainVariant = apiProduct.variants[0];
+
+        let diamondOptions: DiamondOption[] = [];
+        if (mainVariant && mainVariant.diamondConfigs) {
+          diamondOptions = mainVariant.diamondConfigs.map((config, i) => ({
+            id: config._id || crypto.randomUUID(),
+            quality: config.diamond.clarity,
+            count: config.quantity,
+            shape: config.diamond.shape,
+            weight: 0.5,
+            isMain: i === 0,
+          }));
+        }
+
+        let mediaFiles: MediaFile[] = [];
+        if (apiProduct.media.coverImages) {
+          mediaFiles = apiProduct.media.coverImages.map((url, i) => ({
+            id: `media-image-${apiProduct._id}-${i}`,
+            url,
+            type: 'image',
+          }));
+        }
+        if (apiProduct.media.videoUrl) {
+          mediaFiles.push({
+            id: `media-video-${apiProduct._id}`,
+            url: apiProduct.media.videoUrl,
+            type: 'video',
+          });
+        }
+        if (apiProduct.media.model3dUrl && apiProduct.media.model3dUrl.length > 0) {
+          mediaFiles.push({
+            id: `media-3dmodel-${apiProduct._id}`,
+            url: apiProduct.media.model3dUrl[0],
+            type: '3d_model',
+          });
+        }
+
+        const stock = mainVariant?.metalConfig?.stock || 0;
+        const status = stock > 0 ? 'Active' : 'Out of Stock';
+
+        return {
+          id: apiProduct._id,
+          name: apiProduct.title,
+          media: mediaFiles,
+          images: apiProduct.media.coverImages,
+          metalQuality: mainVariant?.metalConfig?.purity || '',
+          metalColor: mainVariant?.metalConfig?.color || '',
+          diamondQuality: mainVariant?.diamondConfigs?.[0]?.diamond?.clarity || '',
+          diamondTone: mainVariant?.diamondConfigs?.[0]?.diamond?.color || '',
+          diamondOptions: diamondOptions,
+          sizes: [],
+          metalGrossWeight: 0,
+          diamondWeight: 0,
+          sku: mainVariant?.SKU || '',
+          shape: mainVariant?.diamondConfigs?.[0]?.diamond?.shape || '',
+          category: 'Rings',
+          subCategory: 'Engagement Rings',
+          pricingTiers: apiProduct.variants.map(v => ({
+            id: v._id,
+            metalName: v.metalConfig.type,
+            metalSubCategory: v.metalConfig.purity,
+          })),
+          stock: stock,
+          description: '',
+          diamondCertification: mainVariant?.diamondConfigs?.[0]?.diamond?.certification?.authority || '',
+          goldCertification: mainVariant?.metalConfig?.certification?.authority || '',
+          sideStones: '',
+          status: status,
+          rating: 0,
+          customizable: false,
+          createdAt: new Date().toISOString().split('T')[0],
+          occasion: '',
+          gender: '',
+          collection: '',
+          stoneClarity: mainVariant?.diamondConfigs?.[0]?.diamond?.clarity || '',
+          stoneColor: mainVariant?.diamondConfigs?.[0]?.diamond?.color || '',
+          stoneCut: mainVariant?.diamondConfigs?.[0]?.diamond?.cut || '',
+          settingType: '',
+          bandWidth: 0,
+          totalDiamonds: mainVariant?.diamondConfigs?.reduce((sum, config) => sum + config.quantity, 0) || 0,
+          warranty: '',
+          returnPolicy: '',
+          tags: [],
+        };
+      });
+      setProducts(transformedProducts);
+    } catch (err) {
+      console.error('Failed to fetch products:', err);
+      setError('Failed to load products. Please check the API URL and your network connection.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [authToken]);
+
+  const fetchCategories = useCallback(async () => {
+    if (!authToken) return;
+    try {
+      const response = await fetch('http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/productAttributes/categories', {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      const data = await response.json();
+
+      const fetchedCategoryTitles = Array.isArray(data) ? data.map((c: { title: string }) => c.title) : [];
+
+      const newApiCategories = fetchedCategoryTitles.reduce((acc, category) => {
+        if (categories[category as keyof typeof categories]) {
+          acc[category] = categories[category as keyof typeof categories];
+        } else {
+          acc[category] = [];
+        }
+        return acc;
+      }, {} as { [key: string]: string[] });
+
+      newApiCategories['All'] = [];
+
+      setApiCategories(newApiCategories);
+    } catch (err) {
+      console.error('Failed to fetch categories:', err);
+    }
+  }, [authToken]);
+
+
+  useEffect(() => {
+    if (authToken) {
+      fetchProducts();
+      fetchCategories();
+      fetchDiamondAttributes();
+    }
+  }, [authToken, fetchProducts, fetchCategories]);
 
   const initialSizeMasterList: SizeMasterList = {
     'All': [],
@@ -1339,13 +1613,30 @@ const Products: FC = () => {
     return matchesSearch && matchesCategory && matchesSubCategory;
   });
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
-      setProducts(products.filter(product => product.id !== id));
+      try {
+        const response = await fetch(`http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/products/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+          },
+        });
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to delete product: ${response.status} ${response.statusText} - ${errorText}`);
+        }
+
+        setProducts(products.filter(product => product.id !== id));
+        alert('Product deleted successfully!');
+      } catch (err) {
+        console.error('Error deleting product:', err);
+        alert('Failed to delete product.');
+      }
     }
   };
 
-  const handleAddProduct = () => {
+  const handleAddProduct = async (isEditing: boolean) => {
     if (!newProduct.name || !newProduct.sku || !newProduct.category || !newProduct.pricingTiers || newProduct.pricingTiers.length === 0) {
       alert('Please fill in all required fields: Product Name, SKU, Category, and at least one Pricing Tier.');
       return;
@@ -1355,24 +1646,93 @@ const Products: FC = () => {
       alert('Please ensure all pricing tiers have metal name and sub-category selected.');
       return;
     }
-    const product: JewelryProduct = {
-      ...newProduct as JewelryProduct,
-      id: editingProduct ? editingProduct.id : Math.max(0, ...products.map(p => p.id)) + 1,
-      status: (newProduct.stock && newProduct.stock > 0) ? 'Active' : 'Out of Stock',
-      rating: newProduct.rating || 0,
-      createdAt: editingProduct ? editingProduct.createdAt : new Date().toISOString().split('T')[0]
+
+    const imageMedia = (newProduct.media || []).filter(m => m.type === 'image');
+    const videoMedia = (newProduct.media || []).find(m => m.type === 'video');
+    const model3dMedia = (newProduct.media || []).find(m => m.type === '3d_model');
+
+    const payload = {
+      title: newProduct.name,
+      slug: newProduct.name.toLowerCase().replace(/ /g, '-'),
+      description: newProduct.description,
+      productType: 'standard',
+      media: {
+        coverImages: imageMedia.map(m => m.url),
+        videoUrl: videoMedia ? videoMedia.url : undefined,
+        model3dUrl: model3dMedia ? [model3dMedia.url] : [],
+      },
+      variants: newProduct.pricingTiers.map(tier => ({
+        SKU: newProduct.sku,
+        isAvailable: (newProduct.stock ?? 0) > 0, // Use a nullish coalescing operator for a safe check
+        metalConfig: {
+          type: tier.metalName,
+          purity: tier.metalSubCategory,
+          color: newProduct.metalColor,
+          stock: newProduct.stock ?? 0, // Fix: Provide a default value if stock is undefined
+          certification: {
+            authority: newProduct.goldCertification,
+            number: '',
+          },
+        },
+        diamondConfigs: (newProduct.diamondOptions || []).map(option => ({
+          diamond: {
+            shape: option.shape,
+            cut: newProduct.stoneCut,
+            clarity: newProduct.stoneClarity,
+            color: newProduct.stoneColor,
+            certification: {
+              authority: newProduct.diamondCertification,
+              number: '',
+            },
+          },
+          quantity: option.count,
+        })),
+        priceBreakdown: {},
+      })),
+      category: { name: newProduct.category },
+      subCategory: { name: newProduct.subCategory },
+      collection: newProduct.collection,
+      occasion: newProduct.occasion,
+      gender: newProduct.gender,
+      tags: newProduct.tags,
+      warranty: newProduct.warranty,
+      returnPolicy: newProduct.returnPolicy,
+      isCustomizable: newProduct.customizable,
     };
-    if (editingProduct) {
-      setProducts(products.map(p => p.id === editingProduct.id ? product : p));
-    } else {
-      setProducts([...products, product]);
+
+    const method = isEditing ? 'PUT' : 'POST';
+    const url = isEditing
+      ? `http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/products/${editingProduct?.id}`
+      : `http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/products`;
+
+    try {
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`API Error: ${errorData.message}`);
+      }
+
+      alert(`Product ${isEditing ? 'updated' : 'added'} successfully!`);
+      fetchProducts();
+      setShowAddModal(false);
+      setEditingProduct(null);
+      setNewProduct(getInitialNewProductState());
+      setSelectedImages([]);
+      setImagePreviewUrls([]);
+      setActiveTab('basic');
+
+    } catch (error) {
+      console.error(`Error ${isEditing ? 'updating' : 'adding'} product:`, error);
+      alert(`Failed to ${isEditing ? 'update' : 'add'} product. See console for details.`);
     }
-    setShowAddModal(false);
-    setEditingProduct(null);
-    setNewProduct(getInitialNewProductState());
-    setSelectedImages([]);
-    setImagePreviewUrls([]);
-    setActiveTab('basic');
   };
 
   const handleViewProduct = (product: JewelryProduct) => {
@@ -1428,8 +1788,52 @@ const Products: FC = () => {
   };
 
   const getSubCategories = useCallback(() => {
-    return selectedCategory === 'All' ? [] : categories[selectedCategory as keyof typeof categories] || [];
-  }, [selectedCategory]);
+    return selectedCategory === 'All' ? [] : apiCategories[selectedCategory] || [];
+  }, [selectedCategory, apiCategories]);
+
+  const handleAddCategory = async (newCategoryName: string) => {
+    if (!newCategoryName.trim()) {
+      alert("Category name cannot be empty.");
+      return;
+    }
+
+    try {
+      const payload = {
+        title: newCategoryName.trim(),
+        slug: newCategoryName.trim().toLowerCase().replace(/ /g, '-'),
+      };
+      
+      const response = await fetch('http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/productAttributes/categories', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Failed to add category: ${errorData.message}`);
+      }
+
+      alert('Category added successfully!');
+      fetchCategories(); // Re-fetch the categories to update the list
+      setNewProduct(prev => ({ ...prev, category: newCategoryName.trim() }));
+      
+    } catch (error) {
+      console.error('Error adding new category:', error);
+      alert('Failed to add new category. Please try again.');
+    }
+  };
+
+  if (isLoading) {
+    return <div className="text-center py-10">Loading products...</div>;
+  }
+
+  if (error) {
+    return <div className="text-center py-10 text-red-600">Error: {error}</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -1493,7 +1897,7 @@ const Products: FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Categories</p>
-              <p className="text-2xl font-bold text-gray-900">{Object.keys(categories).length - 1}</p>
+              <p className="text-2xl font-bold text-gray-900">{Object.keys(apiCategories).length - 1}</p>
             </div>
             <div className="bg-blue-100 p-3 rounded-full">
               <FileText className="h-6 w-6 text-blue-600" />
@@ -1511,52 +1915,6 @@ const Products: FC = () => {
             <div className="bg-green-100 p-3 rounded-full">
               <DollarSign className="h-6 w-6 text-green-600" />
             </div>
-          </div>
-        </div>
-      </div>
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-          <div className="flex items-center space-x-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-              <input
-                type="text"
-                placeholder="Search jewelry products..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent w-64"
-              />
-            </div>
-            <select
-              value={selectedCategory}
-              onChange={(e) => {
-                setSelectedCategory(e.target.value);
-                setSelectedSubCategory('All');
-              }}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-            >
-              {Object.keys(categories).map(category => (
-                <option key={category} value={category}>{category}</option>
-              ))}
-            </select>
-            {selectedCategory !== 'All' && getSubCategories().length > 0 && (
-              <select
-                value={selectedSubCategory}
-                onChange={(e) => setSelectedSubCategory(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-              >
-                <option value="All">All Sub Categories</option>
-                {getSubCategories().map(subCategory => (
-                  <option key={subCategory} value={subCategory}>{subCategory}</option>
-                ))}
-              </select>
-            )}
-          </div>
-          <div className="flex items-center space-x-2">
-            <Filter className="h-5 w-5 text-gray-400" />
-            <span className="text-sm text-gray-600">
-              Showing {filteredProducts.length} of {products.length} products
-            </span>
           </div>
         </div>
       </div>
@@ -1609,6 +1967,11 @@ const Products: FC = () => {
                             {product.media[0].type === 'gif' && (
                               <div className="absolute top-1 left-1 bg-purple-500 text-white text-xs px-1 rounded">
                                 GIF
+                              </div>
+                            )}
+                            {product.media[0].type === '3d_model' && (
+                              <div className="absolute top-1 left-1 bg-teal-500 text-white text-xs px-1 rounded">
+                                3D
                               </div>
                             )}
                           </>
@@ -1744,7 +2107,7 @@ const Products: FC = () => {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         metalTypes={metalTypes}
-        categories={categories}
+        categories={apiCategories}
         metalQualities={metalQualities}
         metalColors={metalColors}
         diamondQualities={diamondQualities}
@@ -1757,6 +2120,9 @@ const Products: FC = () => {
         customOptions={customOptions}
         addCustomOption={addCustomOption}
         getAllOptions={getAllOptions}
+        apiCategories={Object.keys(apiCategories).filter(c => c !== 'All')}
+        onAddCategory={handleAddCategory}
+        diamondAttributes={diamondAttributes}
       />
 
       {viewingProduct && (
@@ -1797,6 +2163,11 @@ const Products: FC = () => {
                         {viewingProduct.media[selectedMediaIndex]?.type === 'gif' && (
                           <div className="absolute top-2 left-2 bg-purple-500 text-white text-xs px-2 py-1 rounded">
                             GIF
+                          </div>
+                        )}
+                        {viewingProduct.media[selectedMediaIndex]?.type === '3d_model' && (
+                          <div className="absolute top-2 left-2 bg-teal-500 text-white text-xs px-2 py-1 rounded">
+                            3D Model
                           </div>
                         )}
 
@@ -1861,6 +2232,11 @@ const Products: FC = () => {
                               {media.type === 'gif' && (
                                 <div className="absolute top-0 left-0 bg-purple-500 text-white text-xs px-1 rounded">
                                   GIF
+                                </div>
+                              )}
+                              {media.type === '3d_model' && (
+                                <div className="absolute top-0 left-0 bg-teal-500 text-white text-xs px-1 rounded">
+                                  3D
                                 </div>
                               )}
                               {index === selectedMediaIndex && (
