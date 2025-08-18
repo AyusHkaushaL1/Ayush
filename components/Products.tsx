@@ -125,6 +125,7 @@ interface EnhancedDropdownProps {
   className?: string;
   options: string[];
   addCustomOption: (optionType: string, newValue: string) => boolean;
+  onAddOption?: (newValue: string) => Promise<void>;
 }
 
 const EnhancedDropdown: FC<EnhancedDropdownProps> = memo(({
@@ -135,15 +136,16 @@ const EnhancedDropdown: FC<EnhancedDropdownProps> = memo(({
   placeholder,
   className,
   options,
-  addCustomOption
+  addCustomOption,
+  onAddOption
 }) => {
   const [showAddNew, setShowAddNew] = useState(false);
   const [newOptionValue, setNewOptionValue] = useState('');
 
-  const handleAddNewOption = useCallback(() => {
+  const handleAddNewOption = useCallback(async () => {
     if (newOptionValue.trim()) {
-      const success = addCustomOption(optionType, newOptionValue);
-      if (success) {
+      if (onAddOption) {
+        await onAddOption(newOptionValue.trim());
         const syntheticEvent = {
           target: { name, value: newOptionValue.trim() }
         } as React.ChangeEvent<HTMLSelectElement>;
@@ -151,10 +153,20 @@ const EnhancedDropdown: FC<EnhancedDropdownProps> = memo(({
         setNewOptionValue('');
         setShowAddNew(false);
       } else {
-        alert('This option already exists!');
+        const success = addCustomOption(optionType, newOptionValue);
+        if (success) {
+          const syntheticEvent = {
+            target: { name, value: newOptionValue.trim() }
+          } as React.ChangeEvent<HTMLSelectElement>;
+          onChange(syntheticEvent);
+          setNewOptionValue('');
+          setShowAddNew(false);
+        } else {
+          alert('This option already exists!');
+        }
       }
     }
-  }, [newOptionValue, addCustomOption, optionType, name, onChange]);
+  }, [newOptionValue, addCustomOption, optionType, name, onChange, onAddOption]);
 
   return (
     <div className="space-y-2">
@@ -234,7 +246,6 @@ interface AddProductModalProps {
   activeTab: string;
   setActiveTab: React.Dispatch<React.SetStateAction<string>>;
   metalTypes: { [key: string]: string[] };
-  categories: { [key: string]: string[] };
   metalQualities: string[];
   metalColors: string[];
   diamondQualities: string[];
@@ -247,13 +258,19 @@ interface AddProductModalProps {
   customOptions: { [key: string]: string[] };
   addCustomOption: (optionType: string, newValue: string) => boolean;
   getAllOptions: (optionType: string) => string[];
-  apiCategories: string[];
+  apiCategories: { title: string, id: string }[];
+  apiSubcategories: { title: string, id: string }[];
   onAddCategory: (newCategory: string) => Promise<void>;
+  onAddSubcategory: (newSubcategory: string, parentId: string) => Promise<void>;
+  onAddSettingStyle: (newSettingStyle: string) => Promise<void>;
+  onAddMetalColor: (newMetalColor: string) => Promise<void>;
+  onAddMetalQuality: (newMetalQuality: string) => Promise<void>; // New prop for Metal Quality
   diamondAttributes: {
     shapes: string[];
     cuts: string[];
     clarities: string[];
   };
+  settingStyles: string[];
 }
 
 const AddProductModal: FC<AddProductModalProps> = memo(({
@@ -274,7 +291,6 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
   activeTab,
   setActiveTab,
   metalTypes,
-  categories,
   metalQualities,
   metalColors,
   diamondQualities,
@@ -288,13 +304,23 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
   addCustomOption,
   getAllOptions,
   apiCategories,
+  apiSubcategories,
   onAddCategory,
-  diamondAttributes
+  onAddSubcategory,
+  onAddSettingStyle,
+  onAddMetalColor,
+  onAddMetalQuality, // Destructure new prop
+  diamondAttributes,
+  settingStyles
 }) => {
   const [newSizeInput, setNewSizeInput] = useState('');
   const [showAddSizeInput, setShowAddSizeInput] = useState(false);
   const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [showNewSubcategoryInput, setShowNewSubcategoryInput] = useState(false);
+  const [newSubcategoryName, setNewSubcategoryName] = useState('');
+  const [showNewSettingStyleInput, setShowNewSettingStyleInput] = useState(false);
+  const [newSettingStyleName, setNewSettingStyleName] = useState('');
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -304,7 +330,12 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
     } else if (type === 'number') {
       setNewProduct(prev => ({ ...prev, [name]: value === '' ? '' : Number(value) }));
     } else {
-      setNewProduct(prev => ({ ...prev, [name]: value }));
+      if (name === 'category') {
+          setNewProduct(prev => ({ ...prev, [name]: value, subCategory: '' }));
+          setShowNewSubcategoryInput(false);
+      } else {
+        setNewProduct(prev => ({ ...prev, [name]: value }));
+      }
     }
   }, [setNewProduct]);
 
@@ -419,8 +450,8 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
   const handleAddNewSize = useCallback(() => {
     if (newSizeInput.trim() && newProduct.category) {
       const category = newProduct.category as keyof SizeMasterList;
-      if (sizeMasterList[category] && !sizeMasterList[category].includes(newSizeInput.trim())) {
-        setSizeMasterList(prev => ({ ...prev, [category]: [...prev[category], newSizeInput.trim()] }));
+      if ((sizeMasterList as any)[category] && !(sizeMasterList as any)[category].includes(newSizeInput.trim())) {
+        setSizeMasterList(prev => ({ ...prev, [category]: [...(prev as any)[category], newSizeInput.trim()] }));
       }
       setNewSizeInput('');
       setShowAddSizeInput(false);
@@ -432,10 +463,26 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
     setNewProduct(prev => ({ ...prev, tags }));
   }, [setNewProduct]);
 
-  const getSubCategories = useCallback(() => {
-    if (!newProduct.category) return [];
-    return categories[newProduct.category as keyof typeof hardcodedCategories] || [];
-  }, [newProduct.category, categories]);
+  const handleAddSubcategory = useCallback(() => {
+    if (newSubcategoryName.trim() && newProduct.category) {
+      const parentCategory = apiCategories.find(c => c.title === newProduct.category);
+      if (parentCategory) {
+        onAddSubcategory(newSubcategoryName.trim(), parentCategory.id);
+        setNewSubcategoryName('');
+        setShowNewSubcategoryInput(false);
+      } else {
+        alert("Please select a valid parent category first.");
+      }
+    }
+  }, [newSubcategoryName, newProduct.category, apiCategories, onAddSubcategory]);
+
+  const handleAddNewSettingStyle = useCallback(() => {
+    if (newSettingStyleName.trim()) {
+      onAddSettingStyle(newSettingStyleName.trim());
+      setNewSettingStyleName('');
+      setShowNewSettingStyleInput(false);
+    }
+  }, [newSettingStyleName, onAddSettingStyle]);
 
   const renderStars = useCallback((rating: number, interactive: boolean = false) => {
     return (
@@ -549,10 +596,11 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                       name="category"
                       value={newProduct.category || ''}
                       onChange={(e) => {
-                        if (e.target.value === '__ADD_NEW__') {
+                        const newCategory = e.target.value;
+                        if (newCategory === '__ADD_NEW__') {
                           setShowNewCategoryInput(true);
                         } else {
-                          handleInputChange(e);
+                          handleInputChange(e); 
                           setShowNewCategoryInput(false);
                         }
                       }}
@@ -560,7 +608,7 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                     >
                       <option value="">Select Category</option>
                       {apiCategories.map(category => (
-                        <option key={category} value={category}>{category}</option>
+                        <option key={category.id} value={category.title}>{category.title}</option>
                       ))}
                       <option value="__ADD_NEW__" className="text-blue-600 font-medium">+ Add New Category</option>
                     </select>
@@ -597,20 +645,62 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                     )}
                   </div>
                 </div>
-                {newProduct.category && getSubCategories().length > 0 && (
+                {newProduct.category && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Sub Category *</label>
-                    <select
-                      name="subCategory"
-                      value={newProduct.subCategory || ''}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    >
-                      <option value="">Select Sub Category</option>
-                      {getSubCategories().map(subCategory => (
-                        <option key={subCategory} value={subCategory}>{subCategory}</option>
-                      ))}
-                    </select>
+                    <div className="space-y-2">
+                        <select
+                          name="subCategory"
+                          value={newProduct.subCategory || ''}
+                          onChange={(e) => {
+                            const newSubCategory = e.target.value;
+                            if (newSubCategory === '__ADD_NEW__') {
+                                setShowNewSubcategoryInput(true);
+                            } else {
+                                handleInputChange(e);
+                                setShowNewSubcategoryInput(false);
+                            }
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                        >
+                          <option value="">Select Sub Category</option>
+                          {apiSubcategories.map(subCategory => (
+                            <option key={subCategory.id} value={subCategory.title}>{subCategory.title}</option>
+                          ))}
+                          <option value="__ADD_NEW__" className="text-blue-600 font-medium">+ Add New Subcategory</option>
+                        </select>
+                        
+                        {showNewSubcategoryInput && (
+                            <div className="flex items-center space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                <input
+                                    type="text"
+                                    value={newSubcategoryName}
+                                    onChange={(e) => setNewSubcategoryName(e.target.value)}
+                                    placeholder="Enter new subcategory name"
+                                    className="flex-1 px-3 py-2 border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    onKeyPress={(e) => {
+                                        if (e.key === 'Enter') {
+                                            handleAddSubcategory();
+                                        }
+                                    }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleAddSubcategory}
+                                    className="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 text-sm"
+                                >
+                                    Add
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowNewSubcategoryInput(false)}
+                                    className="text-gray-500 hover:text-gray-700 p-1"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            </div>
+                        )}
+                    </div>
                   </div>
                 )}
                 <div>
@@ -759,6 +849,7 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                     placeholder="Select Metal Quality"
                     options={getAllOptions('metalQualities')}
                     addCustomOption={addCustomOption}
+                    onAddOption={onAddMetalQuality} // Pass the new handler
                   />
                 </div>
                 <div>
@@ -773,6 +864,7 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                     placeholder="Select Metal Color"
                     options={getAllOptions('metalColors')}
                     addCustomOption={addCustomOption}
+                    onAddOption={onAddMetalColor}
                   />
                 </div>
                 <div>
@@ -816,12 +908,52 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                   <select
                     name="settingType"
                     value={newProduct.settingType || ''}
-                    onChange={handleInputChange}
+                    onChange={(e) => {
+                      if (e.target.value === '__ADD_NEW__') {
+                        setShowNewSettingStyleInput(true);
+                      } else {
+                        handleInputChange(e);
+                        setShowNewSettingStyleInput(false);
+                      }
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                   >
                     <option value="">Select Setting Type</option>
-                    {settingTypes.map(setting => (<option key={setting} value={setting}>{setting}</option>))}
+                    {settingStyles.map(style => (
+                        <option key={style} value={style}>{style}</option>
+                    ))}
+                    <option value="__ADD_NEW__" className="text-blue-600 font-medium">+ Add New Setting Style</option>
                   </select>
+                  {showNewSettingStyleInput && (
+                      <div className="flex items-center space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-lg mt-2">
+                          <input
+                              type="text"
+                              value={newSettingStyleName}
+                              onChange={(e) => setNewSettingStyleName(e.target.value)}
+                              placeholder="Enter new setting style"
+                              className="flex-1 px-3 py-2 border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              onKeyPress={(e) => {
+                                  if (e.key === 'Enter') {
+                                      handleAddNewSettingStyle();
+                                  }
+                              }}
+                          />
+                          <button
+                              type="button"
+                              onClick={handleAddNewSettingStyle}
+                              className="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 text-sm"
+                          >
+                              Add
+                          </button>
+                          <button
+                              type="button"
+                              onClick={() => setShowNewSettingStyleInput(false)}
+                              className="text-gray-500 hover:text-gray-700 p-1"
+                          >
+                              <X className="h-4 w-4" />
+                          </button>
+                      </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1314,16 +1446,6 @@ interface ProductApiResponse {
   };
 }
 
-const categories = {
-  'All': [],
-  'Rings': ['Engagement Rings', 'Wedding Bands', 'Fashion Rings', 'Eternity Rings', 'Promise Rings'],
-  'Necklaces': ['Pendant Necklaces', 'Chain Necklaces', 'Chokers', 'Statement Necklaces', 'Tennis Necklaces'],
-  'Earrings': ['Stud Earrings', 'Drop Earrings', 'Hoop Earrings', 'Chandelier Earrings', 'Huggie Earrings'],
-  'Bracelets': ['Tennis Bracelets', 'Chain Bracelets', 'Bangle Bracelets', 'Charm Bracelets', 'Cuff Bracelets'],
-  'Pendants': ['Diamond Pendants', 'Gemstone Pendants', 'Religious Pendants', 'Initial Pendants', 'Heart Pendants'],
-  'Sets': ['Bridal Sets', 'Necklace Sets', 'Earring Sets', 'Complete Sets']
-};
-
 
 const Products: FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -1353,8 +1475,14 @@ const Products: FC = () => {
   const [products, setProducts] = useState<JewelryProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [apiCategories, setApiCategories] = useState<{ [key: string]: string[] }>({});
+  const [apiCategories, setApiCategories] = useState<{ title: string, id: string }[]>([]);
+  const [apiSubcategories, setApiSubcategories] = useState<{ title: string, id: string }[]>([]);
+  const [apiSettingStyles, setApiSettingStyles] = useState<string[]>([]);
+  const [apiMetalColors, setApiMetalColors] = useState<string[]>([]);
+  const [apiMetalQualities, setApiMetalQualities] = useState<string[]>([]); // New state
   const [authToken, setAuthToken] = useState<string>('');
+  const [newProduct, setNewProduct] = useState<Partial<JewelryProduct>>(getInitialNewProductState());
+
 
   const [diamondAttributes, setDiamondAttributes] = useState({
     shapes: [],
@@ -1516,34 +1644,188 @@ const Products: FC = () => {
         throw new Error('Network response was not ok');
       }
       const data = await response.json();
-
-      const fetchedCategoryTitles = Array.isArray(data) ? data.map((c: { title: string }) => c.title) : [];
-
-      const newApiCategories = fetchedCategoryTitles.reduce((acc, category) => {
-        if (categories[category as keyof typeof categories]) {
-          acc[category] = categories[category as keyof typeof categories];
-        } else {
-          acc[category] = [];
-        }
-        return acc;
-      }, {} as { [key: string]: string[] });
-
-      newApiCategories['All'] = [];
-
-      setApiCategories(newApiCategories);
+      const fetchedCategories = Array.isArray(data) ? data.map((c: { title: string, _id: string }) => ({ title: c.title, id: c._id })) : [];
+      setApiCategories(fetchedCategories);
     } catch (err) {
       console.error('Failed to fetch categories:', err);
     }
   }, [authToken]);
 
+  const fetchSubcategories = useCallback(async (categoryTitle: string) => {
+    if (!authToken || !categoryTitle || categoryTitle === 'All') {
+      setApiSubcategories([]);
+      return;
+    }
+    try {
+      // Fetch all subcategories and filter on the client-side
+      const response = await fetch('http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/productAttributes/subcategories', {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        console.error('Failed to fetch subcategories:', response.status, response.statusText);
+        setApiSubcategories([]);
+        throw new Error('Failed to fetch subcategories');
+      }
+
+      const data = await response.json();
+      const filteredSubcategories = Array.isArray(data)
+        ? data
+          .filter((sub: any) => sub.parentId && sub.parentId.title === categoryTitle)
+          .map((sub: { title: string, _id: string }) => ({ title: sub.title, id: sub._id }))
+        : [];
+      
+      setApiSubcategories(filteredSubcategories);
+    } catch (err) {
+      console.error('Error fetching subcategories:', err);
+      setApiSubcategories([]);
+    }
+  }, [authToken]);
+
+  const fetchSettingStyles = useCallback(async () => {
+      if (!authToken) return;
+      try {
+          const response = await fetch('http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/productAttributes/settingStyles', {
+              headers: {
+                  'Authorization': `Bearer ${authToken}`,
+              },
+          });
+          if (!response.ok) {
+              throw new Error('Failed to fetch setting styles');
+          }
+          const data = await response.json();
+          const fetchedStyles = Array.isArray(data) ? data.map((style: { title: string }) => style.title) : [];
+          setApiSettingStyles(fetchedStyles);
+      } catch (error) {
+          console.error("Error fetching setting styles:", error);
+      }
+  }, [authToken]);
+
+  const fetchMetalColors = useCallback(async () => {
+    if (!authToken) return;
+    try {
+      const response = await fetch('http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/metalAttributes/colors', {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch metal colors');
+      }
+      const data = await response.json();
+      const fetchedColors = Array.isArray(data.metalColors) ? data.metalColors.map((color: { name: string }) => color.name) : [];
+      setApiMetalColors(fetchedColors);
+    } catch (error) {
+      console.error("Error fetching metal colors:", error);
+    }
+  }, [authToken]);
+
+  const fetchMetalQualities = useCallback(async () => {
+    if (!authToken) return;
+    try {
+      const response = await fetch('http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/metalAttributes/purities', {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch metal purities');
+      }
+      const data = await response.json();
+      const fetchedQualities = Array.isArray(data.metalPurities) ? data.metalPurities.map((purity: { value: string }) => purity.value) : [];
+      setApiMetalQualities(fetchedQualities);
+    } catch (error) {
+      console.error("Error fetching metal purities:", error);
+    }
+  }, [authToken]);
+
+  const handleAddMetalColor = useCallback(async (newMetalColorName: string) => {
+    if (!authToken || !newMetalColorName.trim()) {
+      alert("Metal color name cannot be empty.");
+      return;
+    }
+
+    try {
+      const payload = {
+        name: newMetalColorName.trim(),
+        isActive: true,
+      };
+
+      const response = await fetch('http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/metalAttributes/colors', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Failed to add metal color: ${errorData.message}`);
+      }
+
+      alert('Metal color added successfully!');
+      fetchMetalColors();
+      setNewProduct(prev => ({ ...prev, metalColor: newMetalColorName.trim() }));
+    } catch (error) {
+      console.error('Error adding new metal color:', error);
+      alert('Failed to add new metal color. Please try again.');
+    }
+  }, [authToken, fetchMetalColors, setNewProduct]);
+
+  const handleAddMetalQuality = useCallback(async (newMetalQualityValue: string) => {
+    if (!authToken || !newMetalQualityValue.trim()) {
+      alert("Metal quality value cannot be empty.");
+      return;
+    }
+    
+    try {
+      const payload = {
+        value: newMetalQualityValue.trim(),
+        isActive: true,
+      };
+
+      const response = await fetch('http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/metalAttributes/purities', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Failed to add metal purity: ${errorData.message}`);
+      }
+
+      alert('Metal purity added successfully!');
+      fetchMetalQualities(); // Refresh the list
+      setNewProduct(prev => ({ ...prev, metalQuality: newMetalQualityValue.trim() }));
+    } catch (error) {
+      console.error('Error adding new metal purity:', error);
+      alert('Failed to add new metal purity. Please try again.');
+    }
+  }, [authToken, fetchMetalQualities, setNewProduct]);
 
   useEffect(() => {
     if (authToken) {
       fetchProducts();
       fetchCategories();
       fetchDiamondAttributes();
+      fetchSettingStyles();
+      fetchMetalColors();
+      fetchMetalQualities(); // Fetch metal qualities on mount
     }
-  }, [authToken, fetchProducts, fetchCategories]);
+  }, [authToken, fetchProducts, fetchCategories, fetchSettingStyles, fetchMetalColors, fetchMetalQualities]);
+  
+  useEffect(() => {
+    fetchSubcategories(newProduct.category || '');
+  }, [newProduct.category, fetchSubcategories]);
+
 
   const initialSizeMasterList: SizeMasterList = {
     'All': [],
@@ -1555,11 +1837,8 @@ const Products: FC = () => {
     'Sets': ['Standard', 'Adjustable']
   };
 
-  const [newProduct, setNewProduct] = useState<Partial<JewelryProduct>>(getInitialNewProductState());
   const [sizeMasterList, setSizeMasterList] = useState<SizeMasterList>(initialSizeMasterList);
 
-  const metalQualities = ['14K', '18K', '22K', '24K', 'Platinum', 'Silver'];
-  const metalColors = ['Yellow Gold', 'White Gold', 'Rose Gold', 'Platinum', 'Silver'];
   const diamondQualities = ['FL', 'IF', 'VVS1', 'VVS2', 'VS1', 'VS2', 'SI1', 'SI2'];
   const diamondTones = ['D (Colorless)', 'E (Colorless)', 'F (Colorless)', 'G (Near Colorless)', 'H (Near Colorless)', 'I (Near Colorless)', 'J (Near Colorless)'];
   const shapes = ['Round Brilliant', 'Princess', 'Emerald Cut', 'Asscher', 'Oval', 'Marquise', 'Pear', 'Heart', 'Cushion', 'Radiant'];
@@ -1591,8 +1870,8 @@ const Products: FC = () => {
 
   const getAllOptions = useCallback((optionType: string) => {
     const baseOptions: { [key: string]: string[] } = {
-      metalQualities,
-      metalColors,
+      metalQualities: apiMetalQualities,
+      metalColors: apiMetalColors,
       diamondQualities,
       diamondTones,
       shapes,
@@ -1602,7 +1881,7 @@ const Products: FC = () => {
       stoneCuts
     };
     return [...(baseOptions[optionType] || []), ...(customOptions[optionType] || [])];
-  }, [metalQualities, metalColors, diamondQualities, diamondTones, shapes, occasions, genders, settingTypes, stoneCuts, customOptions]);
+  }, [apiMetalQualities, apiMetalColors, diamondQualities, diamondTones, shapes, occasions, genders, settingTypes, stoneCuts, customOptions]);
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1663,12 +1942,12 @@ const Products: FC = () => {
       },
       variants: newProduct.pricingTiers.map(tier => ({
         SKU: newProduct.sku,
-        isAvailable: (newProduct.stock ?? 0) > 0, // Use a nullish coalescing operator for a safe check
+        isAvailable: (newProduct.stock ?? 0) > 0,
         metalConfig: {
           type: tier.metalName,
           purity: tier.metalSubCategory,
           color: newProduct.metalColor,
-          stock: newProduct.stock ?? 0, // Fix: Provide a default value if stock is undefined
+          stock: newProduct.stock ?? 0,
           certification: {
             authority: newProduct.goldCertification,
             number: '',
@@ -1775,7 +2054,7 @@ const Products: FC = () => {
   const getAvailableSizes = useCallback(() => {
     if (!newProduct.category) return [];
     const category = newProduct.category as keyof SizeMasterList;
-    return sizeMasterList[category] || [];
+    return (sizeMasterList as any)[category] || [];
   }, [newProduct.category, sizeMasterList]);
 
   const getStatusColor = (status: string) => {
@@ -1786,10 +2065,6 @@ const Products: FC = () => {
       default: return 'bg-gray-100 text-gray-800';
     }
   };
-
-  const getSubCategories = useCallback(() => {
-    return selectedCategory === 'All' ? [] : apiCategories[selectedCategory] || [];
-  }, [selectedCategory, apiCategories]);
 
   const handleAddCategory = async (newCategoryName: string) => {
     if (!newCategoryName.trim()) {
@@ -1818,7 +2093,7 @@ const Products: FC = () => {
       }
 
       alert('Category added successfully!');
-      fetchCategories(); // Re-fetch the categories to update the list
+      fetchCategories();
       setNewProduct(prev => ({ ...prev, category: newCategoryName.trim() }));
       
     } catch (error) {
@@ -1826,6 +2101,78 @@ const Products: FC = () => {
       alert('Failed to add new category. Please try again.');
     }
   };
+
+  const handleAddSubcategory = useCallback(async (newSubcategoryTitle: string, parentId: string) => {
+    if (!newSubcategoryTitle.trim()) {
+        alert("Subcategory name cannot be empty.");
+        return;
+    }
+
+    try {
+        const payload = {
+            title: newSubcategoryTitle.trim(),
+            parentId: parentId,
+            images: [],
+        };
+
+        const response = await fetch('http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/productAttributes/subcategories', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`,
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`Failed to add subcategory: ${errorData.message}`);
+        }
+
+        alert('Subcategory added successfully!');
+        fetchSubcategories(newProduct.category || '');
+        setNewProduct(prev => ({ ...prev, subCategory: newSubcategoryTitle.trim() }));
+    } catch (error) {
+        console.error('Error adding new subcategory:', error);
+        alert('Failed to add new subcategory. Please try again.');
+    }
+  }, [authToken, fetchSubcategories, newProduct.category, setNewProduct]);
+
+  const handleAddSettingStyle = useCallback(async (newSettingStyleTitle: string) => {
+    if (!newSettingStyleTitle.trim()) {
+        alert("Setting style name cannot be empty.");
+        return;
+    }
+    
+    try {
+        const payload = {
+            title: newSettingStyleTitle.trim(),
+            slug: newSettingStyleTitle.trim().toLowerCase().replace(/ /g, '-'),
+            description: '',
+            images: [],
+            isActive: true,
+        };
+        const response = await fetch('http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/productAttributes/settingStyles', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`,
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`Failed to add setting style: ${errorData.message}`);
+        }
+
+        alert('Setting style added successfully!');
+        fetchSettingStyles(); // Refresh the list
+    } catch (error) {
+        console.error('Error adding new setting style:', error);
+        alert('Failed to add new setting style. Please try again.');
+    }
+  }, [authToken, fetchSettingStyles]);
 
   if (isLoading) {
     return <div className="text-center py-10">Loading products...</div>;
@@ -1897,7 +2244,7 @@ const Products: FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Categories</p>
-              <p className="text-2xl font-bold text-gray-900">{Object.keys(apiCategories).length - 1}</p>
+              <p className="text-2xl font-bold text-gray-900">{apiCategories.length}</p>
             </div>
             <div className="bg-blue-100 p-3 rounded-full">
               <FileText className="h-6 w-6 text-blue-600" />
@@ -2107,9 +2454,8 @@ const Products: FC = () => {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         metalTypes={metalTypes}
-        categories={apiCategories}
-        metalQualities={metalQualities}
-        metalColors={metalColors}
+        metalQualities={apiMetalQualities} // Pass fetched data here
+        metalColors={apiMetalColors}
         diamondQualities={diamondQualities}
         diamondTones={diamondTones}
         shapes={shapes}
@@ -2120,9 +2466,15 @@ const Products: FC = () => {
         customOptions={customOptions}
         addCustomOption={addCustomOption}
         getAllOptions={getAllOptions}
-        apiCategories={Object.keys(apiCategories).filter(c => c !== 'All')}
+        apiCategories={apiCategories}
+        apiSubcategories={apiSubcategories}
         onAddCategory={handleAddCategory}
+        onAddSubcategory={handleAddSubcategory}
+        onAddSettingStyle={handleAddSettingStyle}
+        onAddMetalColor={handleAddMetalColor}
+        onAddMetalQuality={handleAddMetalQuality} // Pass the new handler
         diamondAttributes={diamondAttributes}
+        settingStyles={apiSettingStyles}
       />
 
       {viewingProduct && (
@@ -2318,6 +2670,7 @@ const Products: FC = () => {
                       <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
                         {viewingProduct.goldCertification}
                       </span>
+                      <div className="text-xs text-gray-500">{viewingProduct.warranty} warranty</div>
                     </div>
                   </div>
                   {viewingProduct.customizable && (
