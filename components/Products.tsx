@@ -264,7 +264,8 @@ interface AddProductModalProps {
   onAddSubcategory: (newSubcategory: string, parentId: string) => Promise<void>;
   onAddSettingStyle: (newSettingStyle: string) => Promise<void>;
   onAddMetalColor: (newMetalColor: string) => Promise<void>;
-  onAddMetalQuality: (newMetalQuality: string) => Promise<void>; // New prop for Metal Quality
+  onAddMetalQuality: (newMetalQuality: string) => Promise<void>;
+  onAddDiamondColor: (newDiamondColor: string) => Promise<void>;
   diamondAttributes: {
     shapes: string[];
     cuts: string[];
@@ -309,7 +310,8 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
   onAddSubcategory,
   onAddSettingStyle,
   onAddMetalColor,
-  onAddMetalQuality, // Destructure new prop
+  onAddMetalQuality,
+  onAddDiamondColor,
   diamondAttributes,
   settingStyles
 }) => {
@@ -321,6 +323,8 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
   const [newSubcategoryName, setNewSubcategoryName] = useState('');
   const [showNewSettingStyleInput, setShowNewSettingStyleInput] = useState(false);
   const [newSettingStyleName, setNewSettingStyleName] = useState('');
+  const [showNewDiamondColorInput, setShowNewDiamondColorInput] = useState(false);
+  const [newDiamondColorName, setNewDiamondColorName] = useState('');
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -331,8 +335,8 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
       setNewProduct(prev => ({ ...prev, [name]: value === '' ? '' : Number(value) }));
     } else {
       if (name === 'category') {
-          setNewProduct(prev => ({ ...prev, [name]: value, subCategory: '' }));
-          setShowNewSubcategoryInput(false);
+        setNewProduct(prev => ({ ...prev, [name]: value, subCategory: '' }));
+        setShowNewSubcategoryInput(false);
       } else {
         setNewProduct(prev => ({ ...prev, [name]: value }));
       }
@@ -483,6 +487,14 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
       setShowNewSettingStyleInput(false);
     }
   }, [newSettingStyleName, onAddSettingStyle]);
+  
+  const handleAddNewDiamondColor = useCallback(() => {
+    if (newDiamondColorName.trim()) {
+      onAddDiamondColor(newDiamondColorName.trim());
+      setNewDiamondColorName('');
+      setShowNewDiamondColorInput(false);
+    }
+  }, [newDiamondColorName, onAddDiamondColor]);
 
   const renderStars = useCallback((rating: number, interactive: boolean = false) => {
     return (
@@ -849,7 +861,7 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                     placeholder="Select Metal Quality"
                     options={getAllOptions('metalQualities')}
                     addCustomOption={addCustomOption}
-                    onAddOption={onAddMetalQuality} // Pass the new handler
+                    onAddOption={onAddMetalQuality}
                   />
                 </div>
                 <div>
@@ -884,12 +896,50 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                   <select
                     name="diamondTone"
                     value={newProduct.diamondTone || ''}
-                    onChange={handleInputChange}
+                    onChange={(e) => {
+                      if (e.target.value === '__ADD_NEW__') {
+                        setShowNewDiamondColorInput(true);
+                      } else {
+                        handleInputChange(e);
+                        setShowNewDiamondColorInput(false);
+                      }
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                   >
                     <option value="">Select Diamond Tone</option>
                     {diamondTones.map(tone => (<option key={tone} value={tone}>{tone}</option>))}
+                    <option value="__ADD_NEW__" className="text-blue-600 font-medium">+ Add New Diamond Tone</option>
                   </select>
+                  {showNewDiamondColorInput && (
+                    <div className="flex items-center space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-lg mt-2">
+                      <input
+                        type="text"
+                        value={newDiamondColorName}
+                        onChange={(e) => setNewDiamondColorName(e.target.value)}
+                        placeholder="Enter new diamond color (e.g., 'D', 'H')"
+                        className="flex-1 px-3 py-2 border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            handleAddNewDiamondColor();
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddNewDiamondColor}
+                        className="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 text-sm"
+                      >
+                        Add
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowNewDiamondColorInput(false)}
+                        className="text-gray-500 hover:text-gray-700 p-1"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Shape</label>
@@ -1479,7 +1529,8 @@ const Products: FC = () => {
   const [apiSubcategories, setApiSubcategories] = useState<{ title: string, id: string }[]>([]);
   const [apiSettingStyles, setApiSettingStyles] = useState<string[]>([]);
   const [apiMetalColors, setApiMetalColors] = useState<string[]>([]);
-  const [apiMetalQualities, setApiMetalQualities] = useState<string[]>([]); // New state
+  const [apiMetalQualities, setApiMetalQualities] = useState<string[]>([]);
+  const [apiDiamondColors, setApiDiamondColors] = useState<string[]>([]);
   const [authToken, setAuthToken] = useState<string>('');
   const [newProduct, setNewProduct] = useState<Partial<JewelryProduct>>(getInitialNewProductState());
 
@@ -1741,6 +1792,25 @@ const Products: FC = () => {
     }
   }, [authToken]);
 
+  const fetchDiamondColors = useCallback(async () => {
+    if (!authToken) return;
+    try {
+      const response = await fetch('http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/diamondAttributes/colors', {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch diamond colors');
+      }
+      const data = await response.json();
+      const fetchedColors = Array.isArray(data.diamondColors) ? data.diamondColors.map((color: { name: string }) => color.name) : [];
+      setApiDiamondColors(fetchedColors);
+    } catch (error) {
+      console.error("Error fetching diamond colors:", error);
+    }
+  }, [authToken]);
+
   const handleAddMetalColor = useCallback(async (newMetalColorName: string) => {
     if (!authToken || !newMetalColorName.trim()) {
       alert("Metal color name cannot be empty.");
@@ -1811,6 +1881,41 @@ const Products: FC = () => {
     }
   }, [authToken, fetchMetalQualities, setNewProduct]);
 
+  const handleAddDiamondColor = useCallback(async (newDiamondColorName: string) => {
+    if (!authToken || !newDiamondColorName.trim()) {
+      alert("Diamond color name cannot be empty.");
+      return;
+    }
+    
+    try {
+      const payload = {
+        name: newDiamondColorName.trim(),
+        isActive: true,
+      };
+
+      const response = await fetch('http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/diamondAttributes/colors', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Failed to add diamond color: ${errorData.message}`);
+      }
+
+      alert('Diamond color added successfully!');
+      fetchDiamondColors(); // Refresh the list
+      setNewProduct(prev => ({ ...prev, diamondTone: newDiamondColorName.trim() }));
+    } catch (error) {
+      console.error('Error adding new diamond color:', error);
+      alert('Failed to add new diamond color. Please try again.');
+    }
+  }, [authToken, fetchDiamondColors, setNewProduct]);
+
   useEffect(() => {
     if (authToken) {
       fetchProducts();
@@ -1818,9 +1923,10 @@ const Products: FC = () => {
       fetchDiamondAttributes();
       fetchSettingStyles();
       fetchMetalColors();
-      fetchMetalQualities(); // Fetch metal qualities on mount
+      fetchMetalQualities();
+      fetchDiamondColors();
     }
-  }, [authToken, fetchProducts, fetchCategories, fetchSettingStyles, fetchMetalColors, fetchMetalQualities]);
+  }, [authToken, fetchProducts, fetchCategories, fetchSettingStyles, fetchMetalColors, fetchMetalQualities, fetchDiamondColors]);
   
   useEffect(() => {
     fetchSubcategories(newProduct.category || '');
@@ -1840,7 +1946,7 @@ const Products: FC = () => {
   const [sizeMasterList, setSizeMasterList] = useState<SizeMasterList>(initialSizeMasterList);
 
   const diamondQualities = ['FL', 'IF', 'VVS1', 'VVS2', 'VS1', 'VS2', 'SI1', 'SI2'];
-  const diamondTones = ['D (Colorless)', 'E (Colorless)', 'F (Colorless)', 'G (Near Colorless)', 'H (Near Colorless)', 'I (Near Colorless)', 'J (Near Colorless)'];
+  const diamondTones = apiDiamondColors.length > 0 ? apiDiamondColors : ['D (Colorless)', 'E (Colorless)', 'F (Colorless)', 'G (Near Colorless)', 'H (Near Colorless)', 'I (Near Colorless)', 'J (Near Colorless)'];
   const shapes = ['Round Brilliant', 'Princess', 'Emerald Cut', 'Asscher', 'Oval', 'Marquise', 'Pear', 'Heart', 'Cushion', 'Radiant'];
   const occasions = ['Engagement', 'Wedding', 'Anniversary', 'Birthday', 'Valentine', 'Graduation', 'Everyday'];
   const genders = ['Women', 'Men', 'Unisex'];
@@ -2454,7 +2560,7 @@ const Products: FC = () => {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         metalTypes={metalTypes}
-        metalQualities={apiMetalQualities} // Pass fetched data here
+        metalQualities={apiMetalQualities}
         metalColors={apiMetalColors}
         diamondQualities={diamondQualities}
         diamondTones={diamondTones}
@@ -2472,7 +2578,8 @@ const Products: FC = () => {
         onAddSubcategory={handleAddSubcategory}
         onAddSettingStyle={handleAddSettingStyle}
         onAddMetalColor={handleAddMetalColor}
-        onAddMetalQuality={handleAddMetalQuality} // Pass the new handler
+        onAddMetalQuality={handleAddMetalQuality}
+        onAddDiamondColor={handleAddDiamondColor}
         diamondAttributes={diamondAttributes}
         settingStyles={apiSettingStyles}
       />
