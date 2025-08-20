@@ -266,6 +266,9 @@ interface AddProductModalProps {
   onAddMetalColor: (newMetalColor: string) => Promise<void>;
   onAddMetalQuality: (newMetalQuality: string) => Promise<void>;
   onAddDiamondColor: (newDiamondColor: string) => Promise<void>;
+  onAddShape: (newShape: string) => Promise<void>;
+  onAddClarity: (newClarity: string) => Promise<void>;
+  onAddCut: (newCut: string) => Promise<void>;
   diamondAttributes: {
     shapes: string[];
     cuts: string[];
@@ -312,6 +315,9 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
   onAddMetalColor,
   onAddMetalQuality,
   onAddDiamondColor,
+  onAddShape,
+  onAddClarity,
+  onAddCut,
   diamondAttributes,
   settingStyles
 }) => {
@@ -487,7 +493,7 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
       setShowNewSettingStyleInput(false);
     }
   }, [newSettingStyleName, onAddSettingStyle]);
-  
+
   const handleAddNewDiamondColor = useCallback(() => {
     if (newDiamondColorName.trim()) {
       onAddDiamondColor(newDiamondColorName.trim());
@@ -612,7 +618,7 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                         if (newCategory === '__ADD_NEW__') {
                           setShowNewCategoryInput(true);
                         } else {
-                          handleInputChange(e); 
+                          handleInputChange(e);
                           setShowNewCategoryInput(false);
                         }
                       }}
@@ -681,7 +687,7 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                           ))}
                           <option value="__ADD_NEW__" className="text-blue-600 font-medium">+ Add New Subcategory</option>
                         </select>
-                        
+                       
                         {showNewSubcategoryInput && (
                             <div className="flex items-center space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                                 <input
@@ -880,18 +886,6 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Diamond Quality</label>
-                  <EnhancedDropdown
-                    name="diamondQuality"
-                    value={newProduct.diamondQuality || ''}
-                    onChange={handleInputChange as any}
-                    optionType="diamondQualities"
-                    placeholder="Select Diamond Quality"
-                    options={getAllOptions('diamondQualities')}
-                    addCustomOption={addCustomOption}
-                  />
-                </div>
-                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Diamond Tone</label>
                   <select
                     name="diamondTone"
@@ -951,6 +945,7 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                     placeholder="Select Shape"
                     options={diamondAttributes.shapes}
                     addCustomOption={addCustomOption}
+                    onAddOption={onAddShape}
                   />
                 </div>
                 <div>
@@ -975,35 +970,35 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                     <option value="__ADD_NEW__" className="text-blue-600 font-medium">+ Add New Setting Style</option>
                   </select>
                   {showNewSettingStyleInput && (
-                      <div className="flex items-center space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-lg mt-2">
-                          <input
-                              type="text"
-                              value={newSettingStyleName}
-                              onChange={(e) => setNewSettingStyleName(e.target.value)}
-                              placeholder="Enter new setting style"
-                              className="flex-1 px-3 py-2 border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              onKeyPress={(e) => {
-                                  if (e.key === 'Enter') {
-                                      handleAddNewSettingStyle();
-                                  }
-                              }}
-                          />
-                          <button
-                              type="button"
-                              onClick={handleAddNewSettingStyle}
-                              className="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 text-sm"
-                          >
-                              Add
-                          </button>
-                          <button
-                              type="button"
-                              onClick={() => setShowNewSettingStyleInput(false)}
-                              className="text-gray-500 hover:text-gray-700 p-1"
-                          >
-                              <X className="h-4 w-4" />
-                          </button>
-                      </div>
-                  )}
+                        <div className="flex items-center space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-lg mt-2">
+                            <input
+                                type="text"
+                                value={newSettingStyleName}
+                                onChange={(e) => setNewSettingStyleName(e.target.value)}
+                                placeholder="Enter new setting style"
+                                className="flex-1 px-3 py-2 border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                onKeyPress={(e) => {
+                                    if (e.key === 'Enter') {
+                                        handleAddNewSettingStyle();
+                                    }
+                                }}
+                            />
+                            <button
+                                type="button"
+                                onClick={handleAddNewSettingStyle}
+                                className="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 text-sm"
+                            >
+                                Add
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setShowNewSettingStyleInput(false)}
+                                className="text-gray-500 hover:text-gray-700 p-1"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+                    )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1056,27 +1051,29 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Stone Clarity</label>
-                  <select
+                  <EnhancedDropdown
                     name="stoneClarity"
                     value={newProduct.stoneClarity || ''}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                  >
-                    <option value="">Select Clarity</option>
-                    {diamondAttributes.clarities.map(clarity => (<option key={clarity} value={clarity}>{clarity}</option>))}
-                  </select>
+                    onChange={handleInputChange as any}
+                    optionType="clarities"
+                    placeholder="Select Clarity"
+                    options={diamondAttributes.clarities}
+                    addCustomOption={addCustomOption}
+                    onAddOption={onAddClarity}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Stone Cut</label>
-                  <select
+                  <EnhancedDropdown
                     name="stoneCut"
                     value={newProduct.stoneCut || ''}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                  >
-                    <option value="">Select Cut</option>
-                    {diamondAttributes.cuts.map(cut => (<option key={cut} value={cut}>{cut}</option>))}
-                  </select>
+                    onChange={handleInputChange as any}
+                    optionType="cuts"
+                    placeholder="Select Cut"
+                    options={diamondAttributes.cuts}
+                    addCustomOption={addCustomOption}
+                    onAddOption={onAddCut}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Side Stones</label>
@@ -1214,29 +1211,17 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Quality</label>
-                        <select
+                        <EnhancedDropdown
+                          name="quality"
                           value={diamond.quality}
-                          onChange={(e) => {
-                            if (e.target.value === '__ADD_NEW__') {
-                              const newQuality = prompt('Enter new diamond quality (e.g., "FL+", "VVS0"):');
-                              if (newQuality) {
-                                if (addCustomOption('diamondQualities', newQuality)) {
-                                  handleDiamondOptionChange(diamond.id, 'quality', newQuality);
-                                } else {
-                                  alert('This quality already exists or is invalid!');
-                                }
-                              }
-                            } else {
-                              handleDiamondOptionChange(diamond.id, 'quality', e.target.value);
-                            }
-                          }}
+                          onChange={(e) => handleDiamondOptionChange(diamond.id, 'quality', e.target.value)}
+                          optionType="diamondQualities"
+                          placeholder="Select Quality"
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        >
-                          {getAllOptions('diamondQualities').map(quality => (
-                            <option key={quality} value={quality}>{quality}</option>
-                          ))}
-                          <option value="__ADD_NEW__" className="text-blue-600 font-medium">+ Add New Quality</option>
-                        </select>
+                          options={diamondAttributes.clarities}
+                          addCustomOption={addCustomOption}
+                          onAddOption={onAddClarity}
+                        />
                       </div>
 
                       <div>
@@ -1253,29 +1238,17 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Shape</label>
-                        <select
+                        <EnhancedDropdown
+                          name="shape"
                           value={diamond.shape}
-                          onChange={(e) => {
-                            if (e.target.value === '__ADD_NEW__') {
-                              const newShape = prompt('Enter new diamond shape (e.g., "Trillion", "Baguette"):');
-                              if (newShape) {
-                                if (addCustomOption('shapes', newShape)) {
-                                  handleDiamondOptionChange(diamond.id, 'shape', newShape);
-                                } else {
-                                  alert('This shape already exists or is invalid!');
-                                }
-                              }
-                            } else {
-                              handleDiamondOptionChange(diamond.id, 'shape', e.target.value);
-                            }
-                          }}
+                          onChange={(e) => handleDiamondOptionChange(diamond.id, 'shape', e.target.value)}
+                          optionType="shapes"
+                          placeholder="Select Shape"
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        >
-                          {getAllOptions('shapes').map(shape => (
-                            <option key={shape} value={shape}>{shape}</option>
-                          ))}
-                          <option value="__ADD_NEW__" className="text-blue-600 font-medium">+ Add New Shape</option>
-                        </select>
+                          options={diamondAttributes.shapes}
+                          addCustomOption={addCustomOption}
+                          onAddOption={onAddShape}
+                        />
                       </div>
 
                       <div>
@@ -1531,6 +1504,7 @@ const Products: FC = () => {
   const [apiMetalColors, setApiMetalColors] = useState<string[]>([]);
   const [apiMetalQualities, setApiMetalQualities] = useState<string[]>([]);
   const [apiDiamondColors, setApiDiamondColors] = useState<string[]>([]);
+  const [apiMetalTypes, setApiMetalTypes] = useState<{ [key: string]: string[] }>({});
   const [authToken, setAuthToken] = useState<string>('');
   const [newProduct, setNewProduct] = useState<Partial<JewelryProduct>>(getInitialNewProductState());
 
@@ -1541,7 +1515,7 @@ const Products: FC = () => {
     clarities: [],
   });
 
-  const fetchDiamondAttributes = async () => {
+  const fetchDiamondAttributes = useCallback(async () => {
     try {
       const response = await fetch('http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/diamonds/attributes');
       if (!response.ok) {
@@ -1556,7 +1530,7 @@ const Products: FC = () => {
     } catch (error) {
       console.error("Error fetching diamond attributes:", error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     try {
@@ -1811,6 +1785,35 @@ const Products: FC = () => {
     }
   }, [authToken]);
 
+const fetchMetalTypes = useCallback(async () => {
+  if (!authToken) return;
+  try {
+      const response = await fetch('http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/metalAttributes/types', {
+          headers: {
+              'Authorization': `Bearer ${authToken}`,
+          },
+      });
+      if (!response.ok) {
+          throw new Error('Failed to fetch metal types');
+      }
+      const data = await response.json();
+      
+      // Fix: Explicitly type the accumulator and use proper typing
+      const transformedMetalTypes: { [key: string]: string[] } = (data.metalTypes || []).reduce(
+        (acc: { [key: string]: string[] }, metalType: { name: string; purities: { value: string }[] }) => {
+          acc[metalType.name] = (metalType.purities || []).map((purity: { value: string }) => purity.value);
+          return acc;
+        }, 
+        {} as { [key: string]: string[] }
+      );
+      
+      setApiMetalTypes(transformedMetalTypes);
+  } catch (error) {
+      console.error("Error fetching metal types:", error);
+  }
+}, [authToken]);
+
+
   const handleAddMetalColor = useCallback(async (newMetalColorName: string) => {
     if (!authToken || !newMetalColorName.trim()) {
       alert("Metal color name cannot be empty.");
@@ -1851,7 +1854,7 @@ const Products: FC = () => {
       alert("Metal quality value cannot be empty.");
       return;
     }
-    
+   
     try {
       const payload = {
         value: newMetalQualityValue.trim(),
@@ -1886,7 +1889,7 @@ const Products: FC = () => {
       alert("Diamond color name cannot be empty.");
       return;
     }
-    
+   
     try {
       const payload = {
         name: newDiamondColorName.trim(),
@@ -1916,6 +1919,111 @@ const Products: FC = () => {
     }
   }, [authToken, fetchDiamondColors, setNewProduct]);
 
+  const handleAddShape = useCallback(async (newShapeName: string) => {
+    if (!authToken || !newShapeName.trim()) {
+      alert("Shape name cannot be empty.");
+      return;
+    }
+   
+    try {
+      const payload = {
+        name: newShapeName.trim(),
+        isActive: true,
+      };
+
+      const response = await fetch('http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/diamondAttributes/shapes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Failed to add shape: ${errorData.message}`);
+      }
+
+      alert('Shape added successfully!');
+      fetchDiamondAttributes(); // Refresh the list of all diamond attributes
+      setNewProduct(prev => ({ ...prev, shape: newShapeName.trim() }));
+    } catch (error) {
+      console.error('Error adding new shape:', error);
+      alert('Failed to add new shape. Please try again.');
+    }
+  }, [authToken, fetchDiamondAttributes, setNewProduct]);
+
+  const handleAddClarity = useCallback(async (newClarityName: string) => {
+    if (!authToken || !newClarityName.trim()) {
+      alert("Clarity name cannot be empty.");
+      return;
+    }
+   
+    try {
+      const payload = {
+        name: newClarityName.trim(),
+        isActive: true,
+      };
+
+      const response = await fetch('http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/diamondAttributes/clarities', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Failed to add clarity: ${errorData.message}`);
+      }
+
+      alert('Clarity added successfully!');
+      fetchDiamondAttributes(); // Refresh the list
+      setNewProduct(prev => ({ ...prev, stoneClarity: newClarityName.trim() }));
+    } catch (error) {
+      console.error('Error adding new clarity:', error);
+      alert('Failed to add new clarity. Please try again.');
+    }
+  }, [authToken, fetchDiamondAttributes, setNewProduct]);
+
+  const handleAddCut = useCallback(async (newCutName: string) => {
+    if (!authToken || !newCutName.trim()) {
+      alert("Cut name cannot be empty.");
+      return;
+    }
+   
+    try {
+      const payload = {
+        name: newCutName.trim(),
+        isActive: true,
+      };
+
+      const response = await fetch('http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/diamondAttributes/cuts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Failed to add cut: ${errorData.message}`);
+      }
+
+      alert('Cut added successfully!');
+      fetchDiamondAttributes(); // Refresh the list
+      setNewProduct(prev => ({ ...prev, stoneCut: newCutName.trim() }));
+    } catch (error) {
+      console.error('Error adding new cut:', error);
+      alert('Failed to add new cut. Please try again.');
+    }
+  }, [authToken, fetchDiamondAttributes, setNewProduct]);
+
   useEffect(() => {
     if (authToken) {
       fetchProducts();
@@ -1925,9 +2033,10 @@ const Products: FC = () => {
       fetchMetalColors();
       fetchMetalQualities();
       fetchDiamondColors();
+      fetchMetalTypes();
     }
-  }, [authToken, fetchProducts, fetchCategories, fetchSettingStyles, fetchMetalColors, fetchMetalQualities, fetchDiamondColors]);
-  
+  }, [authToken, fetchProducts, fetchCategories, fetchDiamondAttributes, fetchSettingStyles, fetchMetalColors, fetchMetalQualities, fetchDiamondColors, fetchMetalTypes]);
+ 
   useEffect(() => {
     fetchSubcategories(newProduct.category || '');
   }, [newProduct.category, fetchSubcategories]);
@@ -1952,14 +2061,6 @@ const Products: FC = () => {
   const genders = ['Women', 'Men', 'Unisex'];
   const settingTypes = ['Prong Setting', 'Bezel Setting', 'Pave Setting', 'Channel Setting', 'Halo Setting', 'Tension Setting'];
   const stoneCuts = ['Excellent', 'Very Good', 'Good', 'Fair', 'Poor'];
-  const metalTypes = {
-    'Gold': ['9K', '14K', '18K', '22K', '24K'],
-    'Silver': ['925 Sterling', '999 Fine', '958 Britannia', '900 Coin', '935/960 Argentium'],
-    'Platinum': ['950 Platinum', '999 Platinum', '900 Platinum'],
-    'Diamond Solitaire': ['Natural', 'Lab Grown', '0.25 ct', '0.50 ct', '1.00 ct', '1.50 ct', '2.00 ct'],
-    'Diamond Cluster': ['Natural Cluster', 'Lab Grown Cluster', '0.25 ct', '0.50 ct', '1.00 ct', '1.50 ct', '2.00 ct'],
-    'Rose Gold': ['14K Rose', '18K Rose', '22K Rose', '24K Rose'],
-  };
 
   const addCustomOption = useCallback((optionType: string, newValue: string) => {
     if (newValue.trim() && !getAllOptions(optionType).includes(newValue.trim())) {
@@ -2249,7 +2350,7 @@ const Products: FC = () => {
         alert("Setting style name cannot be empty.");
         return;
     }
-    
+   
     try {
         const payload = {
             title: newSettingStyleTitle.trim(),
@@ -2559,7 +2660,7 @@ const Products: FC = () => {
         setSizeMasterList={setSizeMasterList}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        metalTypes={metalTypes}
+        metalTypes={apiMetalTypes}
         metalQualities={apiMetalQualities}
         metalColors={apiMetalColors}
         diamondQualities={diamondQualities}
@@ -2580,6 +2681,9 @@ const Products: FC = () => {
         onAddMetalColor={handleAddMetalColor}
         onAddMetalQuality={handleAddMetalQuality}
         onAddDiamondColor={handleAddDiamondColor}
+        onAddShape={handleAddShape}
+        onAddClarity={handleAddClarity}
+        onAddCut={handleAddCut}
         diamondAttributes={diamondAttributes}
         settingStyles={apiSettingStyles}
       />
