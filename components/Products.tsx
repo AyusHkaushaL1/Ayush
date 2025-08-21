@@ -586,17 +586,6 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">SKU *</label>
-                  <input
-                    type="text"
-                    name="sku"
-                    value={newProduct.sku || ''}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    placeholder="e.g., ESR-18K-001"
-                  />
-                </div>
-                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Collection</label>
                   <input
                     type="text"
@@ -667,57 +656,57 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Sub Category *</label>
                     <div className="space-y-2">
-                        <select
-                          name="subCategory"
-                          value={newProduct.subCategory || ''}
-                          onChange={(e) => {
-                            const newSubCategory = e.target.value;
-                            if (newSubCategory === '__ADD_NEW__') {
-                                setShowNewSubcategoryInput(true);
-                            } else {
-                                handleInputChange(e);
-                                setShowNewSubcategoryInput(false);
-                            }
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                        >
-                          <option value="">Select Sub Category</option>
-                          {apiSubcategories.map(subCategory => (
-                            <option key={subCategory.id} value={subCategory.title}>{subCategory.title}</option>
-                          ))}
-                          <option value="__ADD_NEW__" className="text-blue-600 font-medium">+ Add New Subcategory</option>
-                        </select>
-                       
-                        {showNewSubcategoryInput && (
-                            <div className="flex items-center space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                                <input
-                                    type="text"
-                                    value={newSubcategoryName}
-                                    onChange={(e) => setNewSubcategoryName(e.target.value)}
-                                    placeholder="Enter new subcategory name"
-                                    className="flex-1 px-3 py-2 border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    onKeyPress={(e) => {
-                                        if (e.key === 'Enter') {
-                                            handleAddSubcategory();
-                                        }
-                                    }}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={handleAddSubcategory}
-                                    className="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 text-sm"
-                                >
-                                    Add
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowNewSubcategoryInput(false)}
-                                    className="text-gray-500 hover:text-gray-700 p-1"
-                                >
-                                    <X className="h-4 w-4" />
-                                </button>
-                            </div>
-                        )}
+                      <select
+                        name="subCategory"
+                        value={newProduct.subCategory || ''}
+                        onChange={(e) => {
+                          const newSubCategory = e.target.value;
+                          if (newSubCategory === '__ADD_NEW__') {
+                            setShowNewSubcategoryInput(true);
+                          } else {
+                            handleInputChange(e);
+                            setShowNewSubcategoryInput(false);
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                      >
+                        <option value="">Select Sub Category</option>
+                        {apiSubcategories.map(subCategory => (
+                          <option key={subCategory.id} value={subCategory.title}>{subCategory.title}</option>
+                        ))}
+                        <option value="__ADD_NEW__" className="text-blue-600 font-medium">+ Add New Subcategory</option>
+                      </select>
+                      
+                      {showNewSubcategoryInput && (
+                          <div className="flex items-center space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                              <input
+                                  type="text"
+                                  value={newSubcategoryName}
+                                  onChange={(e) => setNewSubcategoryName(e.target.value)}
+                                  placeholder="Enter new subcategory name"
+                                  className="flex-1 px-3 py-2 border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                  onKeyPress={(e) => {
+                                      if (e.key === 'Enter') {
+                                          handleAddSubcategory();
+                                      }
+                                  }}
+                              />
+                              <button
+                                  type="button"
+                                  onClick={handleAddSubcategory}
+                                  className="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 text-sm"
+                              >
+                                  Add
+                              </button>
+                              <button
+                                  type="button"
+                                  onClick={() => setShowNewSubcategoryInput(false)}
+                                  className="text-gray-500 hover:text-gray-700 p-1"
+                              >
+                                  <X className="h-4 w-4" />
+                              </button>
+                          </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -767,6 +756,72 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                     placeholder="engagement, solitaire, diamond"
                   />
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Ruler className="inline h-4 w-4 mr-1" /> Available Sizes {newProduct.category && `(${newProduct.category})`}
+                </label>
+                {newProduct.category ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-6 gap-2">
+                      {getAvailableSizes().map(size => (
+                        <button
+                          key={size}
+                          type="button"
+                          onClick={() => handleSizeToggle(size)}
+                          className={`px-3 py-2 text-sm border rounded-lg transition-colors ${
+                            (newProduct.sizes || []).includes(size)
+                              ? 'bg-amber-100 border-amber-500 text-amber-700'
+                              : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="border-t pt-4">
+                      {!showAddSizeInput ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowAddSizeInput(true)}
+                          className="text-amber-600 hover:text-amber-700 text-sm font-medium flex items-center space-x-1"
+                        >
+                          <Plus className="h-4 w-4" />
+                          <span>Add New Size for {newProduct.category}</span>
+                        </button>
+                      ) : (
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="text"
+                            value={newSizeInput}
+                            onChange={(e) => setNewSizeInput(e.target.value)}
+                            placeholder={`e.g., ${newProduct.category === 'Necklaces' ? '32 inches' : newProduct.category === 'Rings' ? '12.5' : '16mm'}`}
+                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleAddNewSize}
+                            className="bg-amber-600 text-white px-3 py-2 rounded-lg hover:bg-amber-700 text-sm"
+                          >
+                            Add
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setShowAddSizeInput(false); setNewSizeInput(''); }}
+                            className="text-gray-500 hover:text-gray-700 p-1"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
+                    <Ruler className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                    <p>Select a category first to see available sizes</p>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Product Media *</label>
@@ -855,6 +910,17 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
           {activeTab === 'specifications' && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">SKU *</label>
+                  <input
+                    type="text"
+                    name="sku"
+                    value={newProduct.sku || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                    placeholder="e.g., ESR-18K-001"
+                  />
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     <Gem className="inline h-4 w-4 mr-1" /> Metal Quality
@@ -1087,73 +1153,7 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Ruler className="inline h-4 w-4 mr-1" /> Available Sizes {newProduct.category && `(${newProduct.category})`}
-                </label>
-                {newProduct.category ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-6 gap-2">
-                      {getAvailableSizes().map(size => (
-                        <button
-                          key={size}
-                          type="button"
-                          onClick={() => handleSizeToggle(size)}
-                          className={`px-3 py-2 text-sm border rounded-lg transition-colors ${
-                            (newProduct.sizes || []).includes(size)
-                              ? 'bg-amber-100 border-amber-500 text-amber-700'
-                              : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                          }`}
-                        >
-                          {size}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="border-t pt-4">
-                      {!showAddSizeInput ? (
-                        <button
-                          type="button"
-                          onClick={() => setShowAddSizeInput(true)}
-                          className="text-amber-600 hover:text-amber-700 text-sm font-medium flex items-center space-x-1"
-                        >
-                          <Plus className="h-4 w-4" />
-                          <span>Add New Size for {newProduct.category}</span>
-                        </button>
-                      ) : (
-                        <div className="flex items-center space-x-2">
-                          <input
-                            type="text"
-                            value={newSizeInput}
-                            onChange={(e) => setNewSizeInput(e.target.value)}
-                            placeholder={`e.g., ${newProduct.category === 'Necklaces' ? '32 inches' : newProduct.category === 'Rings' ? '12.5' : '16mm'}`}
-                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm"
-                          />
-                          <button
-                            type="button"
-                            onClick={handleAddNewSize}
-                            className="bg-amber-600 text-white px-3 py-2 rounded-lg hover:bg-amber-700 text-sm"
-                          >
-                            Add
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setShowAddSizeInput(false); setNewSizeInput(''); }}
-                            className="text-gray-500 hover:text-gray-700 p-1"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
-                    <Ruler className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                    <p>Select a category first to see available sizes</p>
-                  </div>
-                )}
-              </div>
-
+              
               {/* Diamond Options Section */}
               <div>
                 <div className="flex items-center justify-between mb-4">
@@ -1854,7 +1854,7 @@ const fetchMetalTypes = useCallback(async () => {
       alert("Metal quality value cannot be empty.");
       return;
     }
-   
+    
     try {
       const payload = {
         value: newMetalQualityValue.trim(),
@@ -1889,7 +1889,7 @@ const fetchMetalTypes = useCallback(async () => {
       alert("Diamond color name cannot be empty.");
       return;
     }
-   
+    
     try {
       const payload = {
         name: newDiamondColorName.trim(),
@@ -1924,7 +1924,7 @@ const fetchMetalTypes = useCallback(async () => {
       alert("Shape name cannot be empty.");
       return;
     }
-   
+    
     try {
       const payload = {
         name: newShapeName.trim(),
@@ -1959,7 +1959,7 @@ const fetchMetalTypes = useCallback(async () => {
       alert("Clarity name cannot be empty.");
       return;
     }
-   
+    
     try {
       const payload = {
         name: newClarityName.trim(),
@@ -1994,7 +1994,7 @@ const fetchMetalTypes = useCallback(async () => {
       alert("Cut name cannot be empty.");
       return;
     }
-   
+    
     try {
       const payload = {
         name: newCutName.trim(),
@@ -2036,7 +2036,7 @@ const fetchMetalTypes = useCallback(async () => {
       fetchMetalTypes();
     }
   }, [authToken, fetchProducts, fetchCategories, fetchDiamondAttributes, fetchSettingStyles, fetchMetalColors, fetchMetalQualities, fetchDiamondColors, fetchMetalTypes]);
- 
+  
   useEffect(() => {
     fetchSubcategories(newProduct.category || '');
   }, [newProduct.category, fetchSubcategories]);
@@ -2216,7 +2216,7 @@ const fetchMetalTypes = useCallback(async () => {
       setActiveTab('basic');
 
     } catch (error) {
-      console.error(`Error ${isEditing ? 'updating' : 'adding'} product:`, error);
+      console.error(`Error ${isEditing ? 'updating' : 'add'} product:`, error);
       alert(`Failed to ${isEditing ? 'update' : 'add'} product. See console for details.`);
     }
   };
@@ -2350,7 +2350,7 @@ const fetchMetalTypes = useCallback(async () => {
         alert("Setting style name cannot be empty.");
         return;
     }
-   
+    
     try {
         const payload = {
             title: newSettingStyleTitle.trim(),
