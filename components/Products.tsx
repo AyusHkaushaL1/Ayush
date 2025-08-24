@@ -17,11 +17,31 @@ interface DiamondOption {
   isMain?: boolean;
 }
 
-interface PricingTier {
+// Variant now contains most of the specifications
+interface Variant {
   id: string;
-  metalName: string;
-  metalSubCategory: string;
+  price: number;
+  sku: string;
+  stock: number;
+  metalQuality: string;
+  metalColor: string;
+  diamondTone: string;
+  diamondWeight: number; // Total Carat Weight
+  shape: string;
+  settingType: string;
+  metalGrossWeight: number;
+  totalDiamonds: number;
+  bandWidth: number;
+  stoneClarity: string;
+  stoneCut: string;
+  sideStones: string;
+  media: MediaFile[];
+  diamondOptions: DiamondOption[];
+  // Retaining these from the old interface for consistency
+  diamondQuality: string;
+  totalWeight: number;
 }
+
 
 interface JewelryProduct {
   id: string;
@@ -36,12 +56,10 @@ interface JewelryProduct {
   sizes: string[];
   metalGrossWeight: number;
   diamondWeight: number;
-  sku: string;
   shape: string;
   category: string;
   subCategory: string;
-  pricingTiers: PricingTier[];
-  stock: number;
+  variants: Variant[];
   description: string;
   diamondCertification: string;
   goldCertification: string;
@@ -90,12 +108,10 @@ const getInitialNewProductState = (): Partial<JewelryProduct> => ({
   sizes: [],
   metalGrossWeight: 0,
   diamondWeight: 0,
-  sku: '',
   shape: '',
   category: '',
   subCategory: '',
-  pricingTiers: [],
-  stock: 0,
+  variants: [],
   description: '',
   diamondCertification: '',
   goldCertification: '',
@@ -229,52 +245,50 @@ const EnhancedDropdown: FC<EnhancedDropdownProps> = memo(({
 EnhancedDropdown.displayName = 'EnhancedDropdown';
 
 interface AddProductModalProps {
-  show: boolean;
-  onClose: () => void;
-  editingProduct: JewelryProduct | null;
-  newProduct: Partial<JewelryProduct>;
-  setNewProduct: React.Dispatch<React.SetStateAction<Partial<JewelryProduct>>>;
-  imagePreviewUrls: string[];
-  setImagePreviewUrls: React.Dispatch<React.SetStateAction<string[]>>;
-  selectedImages: File[];
-  setSelectedImages: React.Dispatch<React.SetStateAction<File[]>>;
-  onAddProduct: (isEditing: boolean) => void;
-  getAvailableSizes: () => string[];
-  handleSizeToggle: (size: string) => void;
-  sizeMasterList: SizeMasterList;
-  setSizeMasterList: React.Dispatch<React.SetStateAction<SizeMasterList>>;
-  activeTab: string;
-  setActiveTab: React.Dispatch<React.SetStateAction<string>>;
-  metalTypes: { [key: string]: string[] };
-  metalQualities: string[];
-  metalColors: string[];
-  diamondQualities: string[];
-  diamondTones: string[];
-  shapes: string[];
-  occasions: string[];
-  genders: string[];
-  settingTypes: string[];
-  stoneCuts: string[];
-  customOptions: { [key: string]: string[] };
-  addCustomOption: (optionType: string, newValue: string) => boolean;
-  getAllOptions: (optionType: string) => string[];
-  apiCategories: { title: string, id: string }[];
-  apiSubcategories: { title: string, id: string }[];
-  onAddCategory: (newCategory: string) => Promise<void>;
-  onAddSubcategory: (newSubcategory: string, parentId: string) => Promise<void>;
-  onAddSettingStyle: (newSettingStyle: string) => Promise<void>;
-  onAddMetalColor: (newMetalColor: string) => Promise<void>;
-  onAddMetalQuality: (newMetalQuality: string) => Promise<void>;
-  onAddDiamondColor: (newDiamondColor: string) => Promise<void>;
-  onAddShape: (newShape: string) => Promise<void>;
-  onAddClarity: (newClarity: string) => Promise<void>;
-  onAddCut: (newCut: string) => Promise<void>;
-  diamondAttributes: {
-    shapes: string[];
-    cuts: string[];
-    clarities: string[];
-  };
-  settingStyles: string[];
+    show: boolean;
+    onClose: () => void;
+    editingProduct: JewelryProduct | null;
+    newProduct: Partial<JewelryProduct>;
+    setNewProduct: React.Dispatch<React.SetStateAction<Partial<JewelryProduct>>>;
+    onAddProduct: (isEditing: boolean) => void;
+    getAvailableSizes: () => string[];
+    handleSizeToggle: (size: string) => void;
+    sizeMasterList: SizeMasterList;
+    setSizeMasterList: React.Dispatch<React.SetStateAction<SizeMasterList>>;
+    activeTab: string;
+    setActiveTab: React.Dispatch<React.SetStateAction<string>>;
+    customOptions: { [key: string]: string[] };
+    addCustomOption: (optionType: string, newValue: string) => boolean;
+    getAllOptions: (optionType: string) => string[];
+    apiCategories: { title: string; id: string }[];
+    apiSubcategories: { title: string; id: string }[];
+    onAddCategory: (newCategory: string) => Promise<void>;
+    onAddSubcategory: (newSubcategory: string, parentId: string) => Promise<void>;
+    onAddSettingStyle: (newSettingStyle: string) => Promise<void>;
+    onAddMetalColor: (newMetalColor: string) => Promise<void>;
+    onAddMetalQuality: (newMetalQuality: string) => Promise<void>;
+    onAddDiamondColor: (newDiamondColor: string) => Promise<void>;
+    onAddShape: (newShape: string) => Promise<void>;
+    onAddClarity: (newClarity: string) => Promise<void>;
+    onAddCut: (newCut: string) => Promise<void>;
+    diamondAttributes: {
+        shapes: string[];
+        cuts: string[];
+        clarities: string[];
+    };
+    settingStyles: string[];
+    // Main media handlers
+    handleMediaUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    removeMedia: (mediaId: string) => void;
+    // Variant specific handlers
+    addVariant: () => void;
+    removeVariant: (variantId: string) => void;
+    handleVariantChange: (variantId: string, field: keyof Variant, value: any) => void;
+    handleVariantMediaUpload: (variantId: string, e: React.ChangeEvent<HTMLInputElement>) => void;
+    removeVariantMedia: (variantId: string, mediaId: string) => void;
+    addVariantDiamondOption: (variantId: string) => void;
+    removeVariantDiamondOption: (variantId: string, optionId: string) => void;
+    handleVariantDiamondOptionChange: (variantId: string, optionId: string, field: keyof DiamondOption, value: any) => void;
 }
 
 const AddProductModal: FC<AddProductModalProps> = memo(({
@@ -283,10 +297,6 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
   editingProduct,
   newProduct,
   setNewProduct,
-  imagePreviewUrls,
-  setImagePreviewUrls,
-  selectedImages,
-  setSelectedImages,
   onAddProduct,
   getAvailableSizes,
   handleSizeToggle,
@@ -294,16 +304,6 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
   setSizeMasterList,
   activeTab,
   setActiveTab,
-  metalTypes,
-  metalQualities,
-  metalColors,
-  diamondQualities,
-  diamondTones,
-  shapes,
-  occasions,
-  genders,
-  settingTypes,
-  stoneCuts,
   customOptions,
   addCustomOption,
   getAllOptions,
@@ -319,7 +319,17 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
   onAddClarity,
   onAddCut,
   diamondAttributes,
-  settingStyles
+  settingStyles,
+  handleMediaUpload,
+  removeMedia,
+  addVariant,
+  removeVariant,
+  handleVariantChange,
+  handleVariantMediaUpload,
+  removeVariantMedia,
+  addVariantDiamondOption,
+  removeVariantDiamondOption,
+  handleVariantDiamondOptionChange,
 }) => {
   const [newSizeInput, setNewSizeInput] = useState('');
   const [showAddSizeInput, setShowAddSizeInput] = useState(false);
@@ -348,125 +358,6 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
       }
     }
   }, [setNewProduct]);
-
-  const handleRatingChange = useCallback((rating: number) => {
-    setNewProduct(prev => ({ ...prev, rating }));
-  }, [setNewProduct]);
-
-  const getMediaType = (file: File): 'image' | 'video' | 'gif' | '3d_model' => {
-    if (file.type.startsWith('video/')) return 'video';
-    if (file.name.toLowerCase().endsWith('.gif') || file.type === 'image/gif') return 'gif';
-    if (file.name.toLowerCase().endsWith('.glb') || file.name.toLowerCase().endsWith('.gltf')) return '3d_model';
-    return 'image';
-  };
-
-  const handleMediaUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-
-    const newMediaFiles: MediaFile[] = files.map(file => ({
-      id: crypto.randomUUID(),
-      url: URL.createObjectURL(file),
-      type: getMediaType(file),
-      file
-    }));
-
-    setNewProduct(prev => ({
-      ...prev,
-      media: [...(prev.media || []), ...newMediaFiles],
-      images: [...(prev.images || []), ...newMediaFiles.map(m => m.url)]
-    }));
-
-    const allFiles = [...selectedImages, ...files];
-    const allUrls = [...imagePreviewUrls, ...newMediaFiles.map(m => m.url)];
-    setSelectedImages(allFiles);
-    setImagePreviewUrls(allUrls);
-  }, [selectedImages, imagePreviewUrls, setSelectedImages, setImagePreviewUrls, setNewProduct]);
-
-  const removeMedia = useCallback((mediaId: string) => {
-    setNewProduct(prev => {
-      const updatedMedia = (prev.media || []).filter(m => m.id !== mediaId);
-      const removedMedia = (prev.media || []).find(m => m.id === mediaId);
-
-      if (removedMedia) {
-        if (removedMedia.url.startsWith('blob:')) {
-          URL.revokeObjectURL(removedMedia.url);
-        }
-        const newUrls = imagePreviewUrls.filter(url => url !== removedMedia.url);
-        const newFiles = selectedImages.filter((_, i) => imagePreviewUrls[i] !== removedMedia.url);
-        setImagePreviewUrls(newUrls);
-        setSelectedImages(newFiles);
-      }
-
-      return {
-        ...prev,
-        media: updatedMedia,
-        images: updatedMedia.filter(m => m.type === 'image').map(m => m.url)
-      };
-    });
-  }, [selectedImages, imagePreviewUrls, setSelectedImages, setImagePreviewUrls, setNewProduct]);
-
-  const handlePricingTierChange = useCallback((id: string, field: keyof PricingTier, value: string | number) => {
-    const updatedTiers = (newProduct.pricingTiers || []).map(tier => {
-      if (tier.id === id) {
-        return { ...tier, [field]: value };
-      }
-      return tier;
-    });
-    setNewProduct(prev => ({ ...prev, pricingTiers: updatedTiers }));
-  }, [newProduct.pricingTiers, setNewProduct]);
-
-  const addPricingTier = useCallback(() => {
-    const newTier: PricingTier = {
-      id: crypto.randomUUID(),
-      metalName: 'Gold',
-      metalSubCategory: '14K'
-    };
-    setNewProduct(prev => ({ ...prev, pricingTiers: [...(prev.pricingTiers || []), newTier] }));
-  }, [setNewProduct]);
-
-  const removePricingTier = useCallback((id: string) => {
-    const updatedTiers = (newProduct.pricingTiers || []).filter(tier => tier.id !== id);
-    setNewProduct(prev => ({ ...prev, pricingTiers: updatedTiers }));
-  }, [newProduct.pricingTiers, setNewProduct]);
-
-  const addDiamondOption = useCallback(() => {
-    const newDiamondOption: DiamondOption = {
-      id: crypto.randomUUID(),
-      quality: 'VVS1',
-      count: 1,
-      shape: 'Round Brilliant',
-      weight: 0.5,
-      isMain: (newProduct.diamondOptions || []).length === 0
-    };
-    setNewProduct(prev => ({ ...prev, diamondOptions: [...(prev.diamondOptions || []), newDiamondOption] }));
-  }, [newProduct.diamondOptions, setNewProduct]);
-
-  const removeDiamondOption = useCallback((id: string) => {
-    const updatedOptions = (newProduct.diamondOptions || []).filter(option => option.id !== id);
-    setNewProduct(prev => ({ ...prev, diamondOptions: updatedOptions }));
-  }, [newProduct.diamondOptions, setNewProduct]);
-
-  const handleDiamondOptionChange = useCallback((id: string, field: keyof DiamondOption, value: string | number | boolean) => {
-    const updatedOptions = (newProduct.diamondOptions || []).map(option => {
-      if (option.id === id) {
-        return { ...option, [field]: value };
-      }
-      return option;
-    });
-    setNewProduct(prev => ({ ...prev, diamondOptions: updatedOptions }));
-  }, [newProduct.diamondOptions, setNewProduct]);
-
-  const handleAddNewSize = useCallback(() => {
-    if (newSizeInput.trim() && newProduct.category) {
-      const category = newProduct.category as keyof SizeMasterList;
-      if ((sizeMasterList as any)[category] && !(sizeMasterList as any)[category].includes(newSizeInput.trim())) {
-        setSizeMasterList(prev => ({ ...prev, [category]: [...(prev as any)[category], newSizeInput.trim()] }));
-      }
-      setNewSizeInput('');
-      setShowAddSizeInput(false);
-    }
-  }, [newSizeInput, newProduct.category, sizeMasterList, setSizeMasterList]);
 
   const handleTagsChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const tags = e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag);
@@ -501,32 +392,7 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
       setShowNewDiamondColorInput(false);
     }
   }, [newDiamondColorName, onAddDiamondColor]);
-
-  const renderStars = useCallback((rating: number, interactive: boolean = false) => {
-    return (
-      <div className="flex items-center space-x-1">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <button
-            key={star}
-            type="button"
-            onClick={interactive ? () => handleRatingChange(star) : undefined}
-            className={`${interactive ? 'cursor-pointer hover:scale-110' : 'cursor-default'} transition-transform`}
-            disabled={!interactive}
-          >
-            <Star
-              className={`h-5 w-5 ${star <= rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
-            />
-          </button>
-        ))}
-        {interactive && (
-          <span className="ml-2 text-sm text-gray-600">
-            {rating > 0 ? `${rating}/5` : 'No rating'}
-          </span>
-        )}
-      </div>
-    );
-  }, [handleRatingChange]);
-
+    
   if (!show) return null;
 
   return (
@@ -546,7 +412,6 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
               {[
                 { id: 'basic', label: 'Basic Info', icon: FileText },
                 { id: 'specifications', label: 'Specifications', icon: Gem },
-                { id: 'pricing', label: 'Pricing & Tiers', icon: DollarSign },
                 { id: 'customization', label: 'Customization', icon: Palette },
                 { id: 'additional', label: 'Additional Info', icon: Settings }
               ].map((tab) => {
@@ -678,35 +543,35 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                       </select>
                       
                       {showNewSubcategoryInput && (
-                          <div className="flex items-center space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                              <input
-                                  type="text"
-                                  value={newSubcategoryName}
-                                  onChange={(e) => setNewSubcategoryName(e.target.value)}
-                                  placeholder="Enter new subcategory name"
-                                  className="flex-1 px-3 py-2 border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                  onKeyPress={(e) => {
-                                      if (e.key === 'Enter') {
-                                          handleAddSubcategory();
-                                      }
-                                  }}
-                              />
-                              <button
-                                  type="button"
-                                  onClick={handleAddSubcategory}
-                                  className="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 text-sm"
-                              >
-                                  Add
-                              </button>
-                              <button
-                                  type="button"
-                                  onClick={() => setShowNewSubcategoryInput(false)}
-                                  className="text-gray-500 hover:text-gray-700 p-1"
-                              >
-                                  <X className="h-4 w-4" />
-                              </button>
-                          </div>
-                      )}
+                            <div className="flex items-center space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                <input
+                                    type="text"
+                                    value={newSubcategoryName}
+                                    onChange={(e) => setNewSubcategoryName(e.target.value)}
+                                    placeholder="Enter new subcategory name"
+                                    className="flex-1 px-3 py-2 border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    onKeyPress={(e) => {
+                                        if (e.key === 'Enter') {
+                                            handleAddSubcategory();
+                                        }
+                                    }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleAddSubcategory}
+                                    className="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 text-sm"
+                                >
+                                    Add
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowNewSubcategoryInput(false)}
+                                    className="text-gray-500 hover:text-gray-700 p-1"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            </div>
+                        )}
                     </div>
                   </div>
                 )}
@@ -735,17 +600,6 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Stock Quantity</label>
-                  <input
-                    type="number"
-                    name="stock"
-                    value={newProduct.stock === 0 ? '' : newProduct.stock}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    placeholder="10"
-                  />
-                </div>
-                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Tags (comma separated)</label>
                   <input
                     type="text"
@@ -755,143 +609,6 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                     placeholder="engagement, solitaire, diamond"
                   />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Ruler className="inline h-4 w-4 mr-1" /> Available Sizes {newProduct.category && `(${newProduct.category})`}
-                </label>
-                {newProduct.category ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-6 gap-2">
-                      {getAvailableSizes().map(size => (
-                        <button
-                          key={size}
-                          type="button"
-                          onClick={() => handleSizeToggle(size)}
-                          className={`px-3 py-2 text-sm border rounded-lg transition-colors ${
-                            (newProduct.sizes || []).includes(size)
-                              ? 'bg-amber-100 border-amber-500 text-amber-700'
-                              : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                          }`}
-                        >
-                          {size}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="border-t pt-4">
-                      {!showAddSizeInput ? (
-                        <button
-                          type="button"
-                          onClick={() => setShowAddSizeInput(true)}
-                          className="text-amber-600 hover:text-amber-700 text-sm font-medium flex items-center space-x-1"
-                        >
-                          <Plus className="h-4 w-4" />
-                          <span>Add New Size for {newProduct.category}</span>
-                        </button>
-                      ) : (
-                        <div className="flex items-center space-x-2">
-                          <input
-                            type="text"
-                            value={newSizeInput}
-                            onChange={(e) => setNewSizeInput(e.target.value)}
-                            placeholder={`e.g., ${newProduct.category === 'Necklaces' ? '32 inches' : newProduct.category === 'Rings' ? '12.5' : '16mm'}`}
-                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm"
-                          />
-                          <button
-                            type="button"
-                            onClick={handleAddNewSize}
-                            className="bg-amber-600 text-white px-3 py-2 rounded-lg hover:bg-amber-700 text-sm"
-                          >
-                            Add
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setShowAddSizeInput(false); setNewSizeInput(''); }}
-                            className="text-gray-500 hover:text-gray-700 p-1"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
-                    <Ruler className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                    <p>Select a category first to see available sizes</p>
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Product Media *</label>
-                <div className="space-y-4">
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-amber-400 transition-colors">
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*,video/*,.gif,.glb,.gltf"
-                      onChange={handleMediaUpload}
-                      className="hidden"
-                      id="media-upload"
-                    />
-                    <label htmlFor="media-upload" className="cursor-pointer">
-                      <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                      <p className="text-sm text-gray-600">Click to upload images, videos, GIFs or 3D models</p>
-                      <p className="text-xs text-gray-500">PNG, JPG, MP4, MOV, GIF, GLB, GLTF up to 50MB each</p>
-                    </label>
-                  </div>
-                  {(newProduct.media || []).length > 0 && (
-                    <div className="grid grid-cols-3 gap-4">
-                      {(newProduct.media || []).map((media) => (
-                        <div key={media.id} className="relative">
-                          {media.type === 'video' ? (
-                            <div className="relative">
-                              <video
-                                src={media.url}
-                                className="w-full h-24 object-cover rounded-lg border"
-                                controls={false}
-                                muted
-                              />
-                              <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded-lg">
-                                <Play className="h-8 w-8 text-white" />
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="relative">
-                              <img
-                                src={media.url}
-                                alt={`Preview ${media.type}`}
-                                className="w-full h-24 object-cover rounded-lg border"
-                              />
-                              {media.type === 'gif' && (
-                                <div className="absolute top-1 left-1 bg-purple-500 text-white text-xs px-1 rounded">
-                                  GIF
-                                </div>
-                              )}
-                              {media.type === 'image' && (
-                                <div className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-1 rounded">
-                                  <ImageIcon className="h-3 w-3" />
-                                </div>
-                              )}
-                              {media.type === '3d_model' && (
-                                <div className="absolute top-1 left-1 bg-teal-500 text-white text-xs px-1 rounded">
-                                  3D
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => removeMedia(media.id)}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
               </div>
               <div>
@@ -905,452 +622,373 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                   placeholder="Detailed description of the jewelry piece..."
                 />
               </div>
+               <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Product Media *</label>
+                    <div className="space-y-4">
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-amber-400 transition-colors">
+                        <input
+                        type="file"
+                        multiple
+                        accept="image/*,video/*,.gif,.glb,.gltf"
+                        onChange={handleMediaUpload}
+                        className="hidden"
+                        id="media-upload-basic"
+                        />
+                        <label htmlFor="media-upload-basic" className="cursor-pointer">
+                        <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                        <p className="text-sm text-gray-600">Click to upload images, videos, GIFs or 3D models</p>
+                        <p className="text-xs text-gray-500">PNG, JPG, MP4, MOV, GIF, GLB, GLTF up to 50MB each</p>
+                        </label>
+                    </div>
+                    {(newProduct.media || []).length > 0 && (
+                        <div className="grid grid-cols-3 gap-4">
+                        {(newProduct.media || []).map((media) => (
+                            <div key={media.id} className="relative">
+                            {media.type === 'video' ? (
+                                <div className="relative">
+                                <video
+                                    src={media.url}
+                                    className="w-full h-24 object-cover rounded-lg border"
+                                    controls={false}
+                                    muted
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded-lg">
+                                    <Play className="h-8 w-8 text-white" />
+                                </div>
+                                </div>
+                            ) : (
+                                <div className="relative">
+                                <img
+                                    src={media.url}
+                                    alt={`Preview ${media.type}`}
+                                    className="w-full h-24 object-cover rounded-lg border"
+                                />
+                                {media.type === 'gif' && (
+                                    <div className="absolute top-1 left-1 bg-purple-500 text-white text-xs px-1 rounded">
+                                    GIF
+                                    </div>
+                                )}
+                                {media.type === 'image' && (
+                                    <div className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-1 rounded">
+                                    <ImageIcon className="h-3 w-3" />
+                                    </div>
+                                )}
+                                {media.type === '3d_model' && (
+                                    <div className="absolute top-1 left-1 bg-teal-500 text-white text-xs px-1 rounded">
+                                    3D
+                                    </div>
+                                )}
+                                </div>
+                            )}
+                            <button
+                                type="button"
+                                onClick={() => removeMedia(media.id)}
+                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                            >
+                                ×
+                            </button>
+                            </div>
+                        ))}
+                        </div>
+                    )}
+                    </div>
+                </div>
             </div>
           )}
           {activeTab === 'specifications' && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">SKU *</label>
-                  <input
-                    type="text"
-                    name="sku"
-                    value={newProduct.sku || ''}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    placeholder="e.g., ESR-18K-001"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Gem className="inline h-4 w-4 mr-1" /> Metal Quality
-                  </label>
-                  <EnhancedDropdown
-                    name="metalQuality"
-                    value={newProduct.metalQuality || ''}
-                    onChange={handleInputChange as any}
-                    optionType="metalQualities"
-                    placeholder="Select Metal Quality"
-                    options={getAllOptions('metalQualities')}
-                    addCustomOption={addCustomOption}
-                    onAddOption={onAddMetalQuality}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Palette className="inline h-4 w-4 mr-1" /> Metal Color
-                  </label>
-                  <EnhancedDropdown
-                    name="metalColor"
-                    value={newProduct.metalColor || ''}
-                    onChange={handleInputChange as any}
-                    optionType="metalColors"
-                    placeholder="Select Metal Color"
-                    options={getAllOptions('metalColors')}
-                    addCustomOption={addCustomOption}
-                    onAddOption={onAddMetalColor}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Diamond Tone</label>
-                  <select
-                    name="diamondTone"
-                    value={newProduct.diamondTone || ''}
-                    onChange={(e) => {
-                      if (e.target.value === '__ADD_NEW__') {
-                        setShowNewDiamondColorInput(true);
-                      } else {
-                        handleInputChange(e);
-                        setShowNewDiamondColorInput(false);
-                      }
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                  >
-                    <option value="">Select Diamond Tone</option>
-                    {diamondTones.map(tone => (<option key={tone} value={tone}>{tone}</option>))}
-                    <option value="__ADD_NEW__" className="text-blue-600 font-medium">+ Add New Diamond Tone</option>
-                  </select>
-                  {showNewDiamondColorInput && (
-                    <div className="flex items-center space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-lg mt-2">
-                      <input
-                        type="text"
-                        value={newDiamondColorName}
-                        onChange={(e) => setNewDiamondColorName(e.target.value)}
-                        placeholder="Enter new diamond color (e.g., 'D', 'H')"
-                        className="flex-1 px-3 py-2 border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
-                            handleAddNewDiamondColor();
-                          }
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddNewDiamondColor}
-                        className="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 text-sm"
-                      >
-                        Add
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowNewDiamondColorInput(false)}
-                        className="text-gray-500 hover:text-gray-700 p-1"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Shape</label>
-                  <EnhancedDropdown
-                    name="shape"
-                    value={newProduct.shape || ''}
-                    onChange={handleInputChange as any}
-                    optionType="shapes"
-                    placeholder="Select Shape"
-                    options={diamondAttributes.shapes}
-                    addCustomOption={addCustomOption}
-                    onAddOption={onAddShape}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Setting Type</label>
-                  <select
-                    name="settingType"
-                    value={newProduct.settingType || ''}
-                    onChange={(e) => {
-                      if (e.target.value === '__ADD_NEW__') {
-                        setShowNewSettingStyleInput(true);
-                      } else {
-                        handleInputChange(e);
-                        setShowNewSettingStyleInput(false);
-                      }
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                  >
-                    <option value="">Select Setting Type</option>
-                    {settingStyles.map(style => (
-                        <option key={style} value={style}>{style}</option>
-                    ))}
-                    <option value="__ADD_NEW__" className="text-blue-600 font-medium">+ Add New Setting Style</option>
-                  </select>
-                  {showNewSettingStyleInput && (
-                        <div className="flex items-center space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-lg mt-2">
-                            <input
-                                type="text"
-                                value={newSettingStyleName}
-                                onChange={(e) => setNewSettingStyleName(e.target.value)}
-                                placeholder="Enter new setting style"
-                                className="flex-1 px-3 py-2 border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                onKeyPress={(e) => {
-                                    if (e.key === 'Enter') {
-                                        handleAddNewSettingStyle();
-                                    }
-                                }}
-                            />
-                            <button
-                                type="button"
-                                onClick={handleAddNewSettingStyle}
-                                className="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 text-sm"
-                            >
-                                Add
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setShowNewSettingStyleInput(false)}
-                                className="text-gray-500 hover:text-gray-700 p-1"
-                            >
-                                <X className="h-4 w-4" />
-                            </button>
+             <div className="space-y-6">
+                 <div className="flex justify-end">
+                     <button
+                         type="button"
+                         onClick={addVariant}
+                         className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+                     >
+                         <Plus className="h-4 w-4" />
+                         <span>Add Variant</span>
+                     </button>
+                 </div>
+
+                 {(newProduct.variants || []).map((variant, index) => (
+                     <div key={variant.id} className="border-2 border-gray-200 rounded-lg p-6 space-y-6 mb-6 relative bg-gray-50/50">
+                         <div className="flex justify-between items-center border-b pb-4 mb-6">
+                             <h3 className="text-lg font-semibold text-gray-800">Variant {index + 1}</h3>
+                             <button
+                                 type="button"
+                                 onClick={() => removeVariant(variant.id)}
+                                 className="text-red-500 hover:text-red-700 p-1"
+                                 title="Remove Variant"
+                             >
+                                 <Trash2 className="h-5 w-5" />
+                             </button>
+                         </div>
+                         
+                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">SKU *</label>
+                                <input
+                                    type="text"
+                                    value={variant.sku || ''}
+                                    onChange={(e) => handleVariantChange(variant.id, 'sku', e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                    placeholder="PROD-001-VAR1"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Price *</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={variant.price ?? ''}
+                                    onChange={(e) => handleVariantChange(variant.id, 'price', Number(e.target.value))}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                    placeholder="150000"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Stock *</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={variant.stock ?? ''}
+                                    onChange={(e) => handleVariantChange(variant.id, 'stock', Number(e.target.value))}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                    placeholder="10"
+                                />
+                            </div>
+                             <div>
+                                 <label className="block text-sm font-medium text-gray-700 mb-2">Metal Quality</label>
+                                 <EnhancedDropdown
+                                     name="metalQuality"
+                                     value={variant.metalQuality || ''}
+                                     onChange={(e) => handleVariantChange(variant.id, 'metalQuality', e.target.value)}
+                                     optionType="metalQualities"
+                                     placeholder="Select Metal Quality"
+                                     options={getAllOptions('metalQualities')}
+                                     addCustomOption={addCustomOption}
+                                     onAddOption={onAddMetalQuality}
+                                 />
+                             </div>
+                             <div>
+                                 <label className="block text-sm font-medium text-gray-700 mb-2">Metal Color</label>
+                                 <EnhancedDropdown
+                                     name="metalColor"
+                                     value={variant.metalColor || ''}
+                                     onChange={(e) => handleVariantChange(variant.id, 'metalColor', e.target.value)}
+                                     optionType="metalColors"
+                                     placeholder="Select Metal Color"
+                                     options={getAllOptions('metalColors')}
+                                     addCustomOption={addCustomOption}
+                                     onAddOption={onAddMetalColor}
+                                 />
+                             </div>
+                             <div>
+                                 <label className="block text-sm font-medium text-gray-700 mb-2">Diamond Tone</label>
+                                 <EnhancedDropdown
+                                     name="diamondTone"
+                                     value={variant.diamondTone || ''}
+                                     onChange={(e) => handleVariantChange(variant.id, 'diamondTone', e.target.value)}
+                                     optionType="diamondTones"
+                                     placeholder="Select Diamond Tone"
+                                     options={getAllOptions('diamondTones')}
+                                     addCustomOption={addCustomOption}
+                                     onAddOption={onAddDiamondColor}
+                                 />
+                             </div>
+                             <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Total Carat Weight</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={variant.diamondWeight ?? ''}
+                                    onChange={(e) => handleVariantChange(variant.id, 'diamondWeight', Number(e.target.value))}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                    placeholder="1.5"
+                                />
+                             </div>
+                             <div>
+                                 <label className="block text-sm font-medium text-gray-700 mb-2">Shape</label>
+                                 <EnhancedDropdown
+                                     name="shape"
+                                     value={variant.shape || ''}
+                                     onChange={(e) => handleVariantChange(variant.id, 'shape', e.target.value)}
+                                     optionType="shapes"
+                                     placeholder="Select Shape"
+                                     options={diamondAttributes.shapes}
+                                     addCustomOption={addCustomOption}
+                                     onAddOption={onAddShape}
+                                 />
+                             </div>
+                             <div>
+                                 <label className="block text-sm font-medium text-gray-700 mb-2">Setting Type</label>
+                                 <EnhancedDropdown
+                                     name="settingType"
+                                     value={variant.settingType || ''}
+                                     onChange={(e) => handleVariantChange(variant.id, 'settingType', e.target.value)}
+                                     optionType="settingTypes"
+                                     placeholder="Select Setting Type"
+                                     options={settingStyles}
+                                     addCustomOption={addCustomOption}
+                                     onAddOption={onAddSettingStyle}
+                                 />
+                             </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Metal Gross Weight (Grams)</label>
+                                <input
+                                    type="number" step="0.1"
+                                    value={variant.metalGrossWeight ?? ''}
+                                    onChange={(e) => handleVariantChange(variant.id, 'metalGrossWeight', Number(e.target.value))}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                    placeholder="3.2"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Total Diamonds</label>
+                                <input
+                                    type="number"
+                                    value={variant.totalDiamonds ?? ''}
+                                    onChange={(e) => handleVariantChange(variant.id, 'totalDiamonds', Number(e.target.value))}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                    placeholder="1"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Band Width (mm)</label>
+                                <input
+                                    type="number" step="0.1"
+                                    value={variant.bandWidth ?? ''}
+                                    onChange={(e) => handleVariantChange(variant.id, 'bandWidth', Number(e.target.value))}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                    placeholder="2.5"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Stone Clarity</label>
+                                <EnhancedDropdown
+                                    name="stoneClarity"
+                                    value={variant.stoneClarity || ''}
+                                    onChange={(e) => handleVariantChange(variant.id, 'stoneClarity', e.target.value)}
+                                    optionType="clarities"
+                                    placeholder="Select Clarity"
+                                    options={diamondAttributes.clarities}
+                                    addCustomOption={addCustomOption}
+                                    onAddOption={onAddClarity}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Stone Cut</label>
+                                <EnhancedDropdown
+                                    name="stoneCut"
+                                    value={variant.stoneCut || ''}
+                                    onChange={(e) => handleVariantChange(variant.id, 'stoneCut', e.target.value)}
+                                    optionType="cuts"
+                                    placeholder="Select Cut"
+                                    options={diamondAttributes.cuts}
+                                    addCustomOption={addCustomOption}
+                                    onAddOption={onAddCut}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Side Stones</label>
+                                <input
+                                    type="text"
+                                    value={variant.sideStones || ''}
+                                    onChange={(e) => handleVariantChange(variant.id, 'sideStones', e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                    placeholder="e.g., 24 Round Diamonds (0.48ct)"
+                                />
+                            </div>
+                         </div>
+                         
+                        <div className="col-span-1 md:col-span-2 lg:col-span-3">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Product Media</label>
+                            <div className="space-y-4">
+                                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-amber-400 transition-colors">
+                                <input
+                                    type="file"
+                                    multiple
+                                    accept="image/*,video/*,.gif,.glb,.gltf"
+                                    onChange={(e) => handleVariantMediaUpload(variant.id, e)}
+                                    className="hidden"
+                                    id={`media-upload-${variant.id}`}
+                                />
+                                <label htmlFor={`media-upload-${variant.id}`} className="cursor-pointer">
+                                    <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                                    <p className="text-sm text-gray-600">Click to upload media for this variant</p>
+                                    <p className="text-xs text-gray-500">PNG, JPG, MP4, MOV, GIF, GLB, GLTF</p>
+                                </label>
+                                </div>
+                                {variant.media.length > 0 && (
+                                <div className="grid grid-cols-3 gap-4">
+                                    {variant.media.map((media) => (
+                                    <div key={media.id} className="relative">
+                                        {media.type === 'video' ? (
+                                             <video src={media.url} className="w-full h-24 object-cover rounded-lg border" controls={false} muted />
+                                        ) : (
+                                            <img src={media.url} alt="Preview" className="w-full h-24 object-cover rounded-lg border"/>
+                                        )}
+                                        <button
+                                        type="button"
+                                        onClick={() => removeVariantMedia(variant.id, media.id)}
+                                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                                        >
+                                        ×
+                                        </button>
+                                    </div>
+                                    ))}
+                                </div>
+                                )}
+                            </div>
                         </div>
-                    )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Weight className="inline h-4 w-4 mr-1" /> Metal Gross Weight (Grams)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    name="metalGrossWeight"
-                    value={newProduct.metalGrossWeight === 0 ? '' : newProduct.metalGrossWeight}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    placeholder="3.2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Diamond Weight (Carat)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    name="diamondWeight"
-                    value={newProduct.diamondWeight === 0 ? '' : newProduct.diamondWeight}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    placeholder="1.5"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Total Diamonds</label>
-                  <input
-                    type="number"
-                    name="totalDiamonds"
-                    value={newProduct.totalDiamonds === 0 ? '' : newProduct.totalDiamonds}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    placeholder="1"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Band Width (mm)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    name="bandWidth"
-                    value={newProduct.bandWidth === 0 ? '' : newProduct.bandWidth}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    placeholder="2.5"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Stone Clarity</label>
-                  <EnhancedDropdown
-                    name="stoneClarity"
-                    value={newProduct.stoneClarity || ''}
-                    onChange={handleInputChange as any}
-                    optionType="clarities"
-                    placeholder="Select Clarity"
-                    options={diamondAttributes.clarities}
-                    addCustomOption={addCustomOption}
-                    onAddOption={onAddClarity}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Stone Cut</label>
-                  <EnhancedDropdown
-                    name="stoneCut"
-                    value={newProduct.stoneCut || ''}
-                    onChange={handleInputChange as any}
-                    optionType="cuts"
-                    placeholder="Select Cut"
-                    options={diamondAttributes.cuts}
-                    addCustomOption={addCustomOption}
-                    onAddOption={onAddCut}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Side Stones</label>
-                  <input
-                    type="text"
-                    name="sideStones"
-                    value={newProduct.sideStones || ''}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    placeholder="e.g., 24 Round Diamonds (0.48ct)"
-                  />
-                </div>
-              </div>
-              
-              {/* Diamond Options Section */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-medium text-gray-900">
-                    <Gem className="inline h-5 w-5 mr-2" />
-                    Diamond Options
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={addDiamondOption}
-                    className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>Add Diamond Option</span>
-                  </button>
-                </div>
 
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
-                  <h4 className="text-sm font-medium text-purple-800 mb-2">Multiple Diamond Configurations</h4>
-                  <p className="text-sm text-purple-700">Add multiple diamond options with different qualities, counts, shapes, and weights. The first option will be marked as the main diamond.</p>
-                </div>
-
-                {(newProduct.diamondOptions || []).map((diamond, index) => (
-                  <div key={diamond.id} className="border border-gray-200 rounded-lg p-4 mb-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-md font-medium text-gray-900 flex items-center">
-                        Diamond Option {index + 1}
-                        {diamond.isMain && (
-                          <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                            Main Diamond
-                          </span>
-                        )}
-                      </h4>
-                      <div className="flex items-center space-x-2">
-                        {!diamond.isMain && (
-                          <button
-                            type="button"
-                            onClick={() => handleDiamondOptionChange(diamond.id, 'isMain', true)}
-                            className="text-purple-600 hover:text-purple-800 text-sm"
-                          >
-                            Set as Main
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => removeDiamondOption(diamond.id)}
-                          className="text-red-600 hover:text-red-800 p-1"
-                          title="Remove Diamond Option"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
+                        <div className="col-span-1 md:col-span-2 lg:col-span-3">
+                            <h4 className="text-md font-medium text-gray-800 mb-4 border-t pt-6">Diamond Options for Variant {index + 1}</h4>
+                             <button
+                                type="button"
+                                onClick={() => addVariantDiamondOption(variant.id)}
+                                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2 mb-4"
+                            >
+                                <Plus className="h-4 w-4" />
+                                <span>Add Diamond Option</span>
+                            </button>
+                            {variant.diamondOptions.map((diamond, dIndex) => (
+                                <div key={diamond.id} className="border border-gray-200 rounded-lg p-4 mb-4 bg-white">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h5 className="font-medium text-gray-700">Diamond {dIndex + 1}</h5>
+                                        <button type="button" onClick={() => removeVariantDiamondOption(variant.id, diamond.id)} className="text-red-500 hover:text-red-700">
+                                            <Trash2 className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Quality</label>
+                                            <EnhancedDropdown name="quality" value={diamond.quality} onChange={(e) => handleVariantDiamondOptionChange(variant.id, diamond.id, 'quality', e.target.value)} optionType="clarities" placeholder="Quality" options={diamondAttributes.clarities} addCustomOption={addCustomOption} onAddOption={onAddClarity}/>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Count</label>
+                                            <input type="number" min="1" value={diamond.count} onChange={(e) => handleVariantDiamondOptionChange(variant.id, diamond.id, 'count', Number(e.target.value))} className="w-full px-3 py-2 border border-gray-300 rounded-lg"/>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Shape</label>
+                                            <EnhancedDropdown name="shape" value={diamond.shape} onChange={(e) => handleVariantDiamondOptionChange(variant.id, diamond.id, 'shape', e.target.value)} optionType="shapes" placeholder="Shape" options={diamondAttributes.shapes} addCustomOption={addCustomOption} onAddOption={onAddShape}/>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Weight (ct)</label>
+                                            <input type="number" step="0.01" min="0" value={diamond.weight} onChange={(e) => handleVariantDiamondOptionChange(variant.id, diamond.id, 'weight', Number(e.target.value))} className="w-full px-3 py-2 border border-gray-300 rounded-lg"/>
+                                        </div>
+                                     </div>
+                                </div>
+                            ))}
+                        </div>
+                     </div>
+                 ))}
+                 {(newProduct.variants || []).length === 0 && (
+                    <div className="text-center py-12 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
+                        <Gem className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                        <p>No variants added yet.</p>
+                        <p className="text-sm">Click "Add Variant" to create the first version of this product.</p>
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Quality</label>
-                        <EnhancedDropdown
-                          name="quality"
-                          value={diamond.quality}
-                          onChange={(e) => handleDiamondOptionChange(diamond.id, 'quality', e.target.value)}
-                          optionType="diamondQualities"
-                          placeholder="Select Quality"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                          options={diamondAttributes.clarities}
-                          addCustomOption={addCustomOption}
-                          onAddOption={onAddClarity}
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Count</label>
-                        <input
-                          type="number"
-                          min="1"
-                          value={diamond.count}
-                          onChange={(e) => handleDiamondOptionChange(diamond.id, 'count', Number(e.target.value))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                          placeholder="1"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Shape</label>
-                        <EnhancedDropdown
-                          name="shape"
-                          value={diamond.shape}
-                          onChange={(e) => handleDiamondOptionChange(diamond.id, 'shape', e.target.value)}
-                          optionType="shapes"
-                          placeholder="Select Shape"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                          options={diamondAttributes.shapes}
-                          addCustomOption={addCustomOption}
-                          onAddOption={onAddShape}
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Weight (ct)</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={diamond.weight}
-                          onChange={(e) => handleDiamondOptionChange(diamond.id, 'weight', Number(e.target.value))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                          placeholder="0.50"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                      <p className="text-sm text-gray-600">
-                        <strong>Summary:</strong> {diamond.count} × {diamond.shape} {diamond.quality} diamond{diamond.count > 1 ? 's' : ''}, {diamond.weight}ct total
-                      </p>
-                    </div>
-                  </div>
-                ))}
-
-                {(!newProduct.diamondOptions || newProduct.diamondOptions.length === 0) && (
-                  <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
-                    <Gem className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                    <p>No diamond options added yet. Click &quot;Add Diamond Option&quot; to get started.</p>
-                  </div>
                 )}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'pricing' && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium text-gray-900">Pricing Tiers by Metal Quality</h3>
-                <button
-                  type="button"
-                  onClick={addPricingTier}
-                  className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors flex items-center space-x-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Add Pricing Tier</span>
-                </button>
-              </div>
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                <h4 className="text-sm font-medium text-amber-800 mb-2">Metal Selection Information</h4>
-                <p className="text-sm text-amber-700">Set different metal types and qualities. When customers select a metal type on the frontend, they can choose from these available options.</p>
-              </div>
-              {(newProduct.pricingTiers || []).map((tier) => (
-                <div key={tier.id} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-md font-medium text-gray-900">Metal Pricing Tier</h4>
-                    <div className="flex items-center space-x-2">
-                      <button type="button" onClick={() => { }} className="text-amber-600 hover:text-amber-800 p-1" title="Edit Tier">
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button type="button" onClick={() => removePricingTier(tier.id)} className="text-red-600 hover:text-red-800 p-1" title="Delete Tier">
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Metal Name</label>
-                      <select
-                        value={tier.metalName}
-                        onChange={(e) => {
-                          const newMetalName = e.target.value;
-                          const firstSubCategory = metalTypes[newMetalName as keyof typeof metalTypes]?.[0] || '';
-                          const updatedTiers = (newProduct.pricingTiers || []).map(t =>
-                            t.id === tier.id ? { ...t, metalName: newMetalName, metalSubCategory: firstSubCategory } : t
-                          );
-                          setNewProduct(prev => ({ ...prev, pricingTiers: updatedTiers }));
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                      >
-                        {Object.keys(metalTypes).map(metal => (<option key={metal} value={metal}>{metal}</option>))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Sub Category</label>
-                      <select
-                        value={tier.metalSubCategory}
-                        onChange={(e) => handlePricingTierChange(tier.id, 'metalSubCategory', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                      >
-                        {(metalTypes[tier.metalName as keyof typeof metalTypes] || []).map(subCat => (<option key={subCat} value={subCat}>{subCat}</option>))}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {(!newProduct.pricingTiers || newProduct.pricingTiers.length === 0) && (
-                <div className="text-center py-8 text-gray-500">
-                  <DollarSign className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                  <p>No pricing tiers added yet. Click &quot;Add Pricing Tier&quot; to get started.</p>
-                </div>
-              )}
-            </div>
+             </div>
           )}
 
           {activeTab === 'customization' && (
@@ -1504,7 +1142,6 @@ const Products: FC = () => {
   const [apiMetalColors, setApiMetalColors] = useState<string[]>([]);
   const [apiMetalQualities, setApiMetalQualities] = useState<string[]>([]);
   const [apiDiamondColors, setApiDiamondColors] = useState<string[]>([]);
-  const [apiMetalTypes, setApiMetalTypes] = useState<{ [key: string]: string[] }>({});
   const [authToken, setAuthToken] = useState<string>('');
   const [newProduct, setNewProduct] = useState<Partial<JewelryProduct>>(getInitialNewProductState());
 
@@ -1514,6 +1151,173 @@ const Products: FC = () => {
     cuts: [],
     clarities: [],
   });
+  
+  // All variant logic is now in the parent component
+  const addVariant = useCallback(() => {
+    const newVariant: Variant = {
+      id: crypto.randomUUID(),
+      price: 0,
+      sku: '',
+      stock: 0,
+      metalQuality: '',
+      metalColor: '',
+      diamondTone: '',
+      diamondWeight: 0,
+      shape: '',
+      settingType: '',
+      metalGrossWeight: 0,
+      totalDiamonds: 0,
+      bandWidth: 0,
+      stoneClarity: '',
+      stoneCut: '',
+      sideStones: '',
+      media: [],
+      diamondOptions: [],
+      diamondQuality: '',
+      totalWeight: 0,
+    };
+    setNewProduct(prev => ({ ...prev, variants: [...(prev.variants || []), newVariant] }));
+  }, [setNewProduct]);
+
+  const removeVariant = useCallback((variantId: string) => {
+    setNewProduct(prev => ({
+      ...prev,
+      variants: (prev.variants || []).filter(v => v.id !== variantId)
+    }));
+  }, [setNewProduct]);
+
+  const handleVariantChange = useCallback((variantId: string, field: keyof Variant, value: any) => {
+    setNewProduct(prev => ({
+      ...prev,
+      variants: (prev.variants || []).map(v => 
+        v.id === variantId ? { ...v, [field]: value } : v
+      )
+    }));
+  }, [setNewProduct]);
+  
+  const getMediaType = (file: File): 'image' | 'video' | 'gif' | '3d_model' => {
+    if (file.type.startsWith('video/')) return 'video';
+    if (file.name.toLowerCase().endsWith('.gif') || file.type === 'image/gif') return 'gif';
+    if (file.name.toLowerCase().endsWith('.glb') || file.name.toLowerCase().endsWith('.gltf')) return '3d_model';
+    return 'image';
+  };
+
+  const handleMediaUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const newMediaFiles: MediaFile[] = files.map(file => ({
+        id: crypto.randomUUID(),
+        url: URL.createObjectURL(file),
+        type: getMediaType(file),
+        file
+    }));
+
+    setNewProduct(prev => ({
+        ...prev,
+        media: [...(prev.media || []), ...newMediaFiles],
+        images: [...(prev.images || []), ...newMediaFiles.filter(m => m.type === 'image').map(m => m.url)]
+    }));
+  }, [setNewProduct]);
+
+  const removeMedia = useCallback((mediaId: string) => {
+      setNewProduct(prev => {
+          const updatedMedia = (prev.media || []).filter(m => m.id !== mediaId);
+          const removedMedia = (prev.media || []).find(m => m.id === mediaId);
+
+          if (removedMedia && removedMedia.url.startsWith('blob:')) {
+              URL.revokeObjectURL(removedMedia.url);
+          }
+          
+          return {
+              ...prev,
+              media: updatedMedia,
+              images: updatedMedia.filter(m => m.type === 'image').map(m => m.url)
+          };
+      });
+  }, [setNewProduct]);
+
+  const handleVariantMediaUpload = useCallback((variantId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const newMediaFiles: MediaFile[] = files.map(file => ({
+      id: crypto.randomUUID(),
+      url: URL.createObjectURL(file),
+      type: getMediaType(file),
+      file
+    }));
+
+    setNewProduct(prev => ({
+      ...prev,
+      variants: (prev.variants || []).map(v => 
+        v.id === variantId ? { ...v, media: [...v.media, ...newMediaFiles] } : v
+      )
+    }));
+  }, [setNewProduct]);
+
+  const removeVariantMedia = useCallback((variantId: string, mediaId: string) => {
+    setNewProduct(prev => ({
+      ...prev,
+      variants: (prev.variants || []).map(v => {
+        if (v.id === variantId) {
+          const removedMedia = v.media.find(m => m.id === mediaId);
+          if (removedMedia && removedMedia.url.startsWith('blob:')) {
+            URL.revokeObjectURL(removedMedia.url);
+          }
+          return { ...v, media: v.media.filter(m => m.id !== mediaId) };
+        }
+        return v;
+      })
+    }));
+  }, [setNewProduct]);
+
+  const addVariantDiamondOption = useCallback((variantId: string) => {
+    setNewProduct(prev => ({
+      ...prev,
+      variants: (prev.variants || []).map(v => {
+        if (v.id === variantId) {
+          const newOption: DiamondOption = {
+            id: crypto.randomUUID(),
+            quality: 'VVS1',
+            count: 1,
+            shape: 'Round',
+            weight: 0.5,
+            isMain: v.diamondOptions.length === 0
+          };
+          return { ...v, diamondOptions: [...v.diamondOptions, newOption] };
+        }
+        return v;
+      })
+    }));
+  }, [setNewProduct]);
+
+  const removeVariantDiamondOption = useCallback((variantId: string, optionId: string) => {
+    setNewProduct(prev => ({
+      ...prev,
+      variants: (prev.variants || []).map(v => 
+        v.id === variantId ? { ...v, diamondOptions: v.diamondOptions.filter(opt => opt.id !== optionId) } : v
+      )
+    }));
+  }, [setNewProduct]);
+
+  const handleVariantDiamondOptionChange = useCallback((variantId: string, optionId: string, field: keyof DiamondOption, value: any) => {
+    setNewProduct(prev => ({
+      ...prev,
+      variants: (prev.variants || []).map(v => {
+        if (v.id === variantId) {
+          return {
+            ...v,
+            diamondOptions: v.diamondOptions.map(opt => 
+              opt.id === optionId ? { ...opt, [field]: value } : opt
+            )
+          };
+        }
+        return v;
+      })
+    }));
+  }, [setNewProduct]);
+
 
   const fetchDiamondAttributes = useCallback(async () => {
     try {
@@ -1599,9 +1403,31 @@ const Products: FC = () => {
             type: '3d_model',
           });
         }
+        
+        const variants: Variant[] = apiProduct.variants.map(v => ({
+            id: v._id,
+            sku: v.SKU,
+            stock: v.metalConfig.stock,
+            metalQuality: v.metalConfig.purity,
+            diamondQuality: v.diamondConfigs[0]?.diamond.clarity || '',
+            price: v.priceBreakdown?.total || 0,
+            totalWeight: 0,
+            metalColor: v.metalConfig.color || '',
+            diamondTone: v.diamondConfigs[0]?.diamond.color || '',
+            diamondWeight: 0, // Needs mapping from API if available
+            shape: v.diamondConfigs[0]?.diamond.shape || '',
+            settingType: '', // Needs mapping
+            metalGrossWeight: 0, // Needs mapping
+            totalDiamonds: v.diamondConfigs.reduce((sum, dc) => sum + dc.quantity, 0),
+            bandWidth: 0, // Needs mapping
+            stoneClarity: v.diamondConfigs[0]?.diamond.clarity || '',
+            stoneCut: v.diamondConfigs[0]?.diamond.cut || '',
+            sideStones: '', // Needs mapping
+            media: [], // Needs mapping
+            diamondOptions: [], // Needs mapping
+        }));
 
-        const stock = mainVariant?.metalConfig?.stock || 0;
-        const status = stock > 0 ? 'Active' : 'Out of Stock';
+        const totalStock = variants.reduce((sum, v) => sum + v.stock, 0);
 
         return {
           id: apiProduct._id,
@@ -1616,21 +1442,15 @@ const Products: FC = () => {
           sizes: [],
           metalGrossWeight: 0,
           diamondWeight: 0,
-          sku: mainVariant?.SKU || '',
           shape: mainVariant?.diamondConfigs?.[0]?.diamond?.shape || '',
           category: 'Rings',
           subCategory: 'Engagement Rings',
-          pricingTiers: apiProduct.variants.map(v => ({
-            id: v._id,
-            metalName: v.metalConfig.type,
-            metalSubCategory: v.metalConfig.purity,
-          })),
-          stock: stock,
+          variants: variants,
           description: '',
           diamondCertification: mainVariant?.diamondConfigs?.[0]?.diamond?.certification?.authority || '',
           goldCertification: mainVariant?.metalConfig?.certification?.authority || '',
           sideStones: '',
-          status: status,
+          status: totalStock > 0 ? 'Active' : 'Out of Stock',
           rating: 0,
           customizable: false,
           createdAt: new Date().toISOString().split('T')[0],
@@ -1784,34 +1604,6 @@ const Products: FC = () => {
       console.error("Error fetching diamond colors:", error);
     }
   }, [authToken]);
-
-const fetchMetalTypes = useCallback(async () => {
-  if (!authToken) return;
-  try {
-      const response = await fetch('http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/metalAttributes/types', {
-          headers: {
-              'Authorization': `Bearer ${authToken}`,
-          },
-      });
-      if (!response.ok) {
-          throw new Error('Failed to fetch metal types');
-      }
-      const data = await response.json();
-      
-      // Fix: Explicitly type the accumulator and use proper typing
-      const transformedMetalTypes: { [key: string]: string[] } = (data.metalTypes || []).reduce(
-        (acc: { [key: string]: string[] }, metalType: { name: string; purities: { value: string }[] }) => {
-          acc[metalType.name] = (metalType.purities || []).map((purity: { value: string }) => purity.value);
-          return acc;
-        }, 
-        {} as { [key: string]: string[] }
-      );
-      
-      setApiMetalTypes(transformedMetalTypes);
-  } catch (error) {
-      console.error("Error fetching metal types:", error);
-  }
-}, [authToken]);
 
 
   const handleAddMetalColor = useCallback(async (newMetalColorName: string) => {
@@ -2033,9 +1825,8 @@ const fetchMetalTypes = useCallback(async () => {
       fetchMetalColors();
       fetchMetalQualities();
       fetchDiamondColors();
-      fetchMetalTypes();
     }
-  }, [authToken, fetchProducts, fetchCategories, fetchDiamondAttributes, fetchSettingStyles, fetchMetalColors, fetchMetalQualities, fetchDiamondColors, fetchMetalTypes]);
+  }, [authToken, fetchProducts, fetchCategories, fetchDiamondAttributes, fetchSettingStyles, fetchMetalColors, fetchMetalQualities, fetchDiamondColors]);
   
   useEffect(() => {
     fetchSubcategories(newProduct.category || '');
@@ -2092,7 +1883,7 @@ const fetchMetalTypes = useCallback(async () => {
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (product.variants[0] && product.variants[0].sku.toLowerCase().includes(searchTerm.toLowerCase())) ||
       product.shape.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
     const matchesSubCategory = selectedSubCategory === 'All' || product.subCategory === selectedSubCategory;
@@ -2123,14 +1914,15 @@ const fetchMetalTypes = useCallback(async () => {
   };
 
   const handleAddProduct = async (isEditing: boolean) => {
-    if (!newProduct.name || !newProduct.sku || !newProduct.category || !newProduct.pricingTiers || newProduct.pricingTiers.length === 0) {
-      alert('Please fill in all required fields: Product Name, SKU, Category, and at least one Pricing Tier.');
+    if (!newProduct.name || !newProduct.category || !newProduct.variants || newProduct.variants.length === 0) {
+      alert('Please fill in Product Name, Category, and at least one Variant.');
       return;
     }
-    const isValidPricing = newProduct.pricingTiers.every(tier => tier.metalName && tier.metalSubCategory);
-    if (!isValidPricing) {
-      alert('Please ensure all pricing tiers have metal name and sub-category selected.');
-      return;
+    
+    const areVariantsValid = newProduct.variants.every(v => v.sku && v.price > 0 && v.stock >= 0);
+    if (!areVariantsValid) {
+        alert('Please ensure all variants have a SKU, Price, and Stock.');
+        return;
     }
 
     const imageMedia = (newProduct.media || []).filter(m => m.type === 'image');
@@ -2147,33 +1939,27 @@ const fetchMetalTypes = useCallback(async () => {
         videoUrl: videoMedia ? videoMedia.url : undefined,
         model3dUrl: model3dMedia ? [model3dMedia.url] : [],
       },
-      variants: newProduct.pricingTiers.map(tier => ({
-        SKU: newProduct.sku,
-        isAvailable: (newProduct.stock ?? 0) > 0,
+      variants: (newProduct.variants || []).map(variant => ({
+        SKU: variant.sku,
+        isAvailable: variant.stock > 0,
         metalConfig: {
-          type: tier.metalName,
-          purity: tier.metalSubCategory,
-          color: newProduct.metalColor,
-          stock: newProduct.stock ?? 0,
-          certification: {
-            authority: newProduct.goldCertification,
-            number: '',
-          },
+          type: newProduct.metalQuality, // This might need to become variant-specific
+          purity: variant.metalQuality,
+          color: variant.metalColor,
+          stock: variant.stock,
+          certification: { authority: newProduct.goldCertification, number: '' },
         },
-        diamondConfigs: (newProduct.diamondOptions || []).map(option => ({
+        diamondConfigs: (variant.diamondOptions || []).map(option => ({
           diamond: {
             shape: option.shape,
-            cut: newProduct.stoneCut,
-            clarity: newProduct.stoneClarity,
-            color: newProduct.stoneColor,
-            certification: {
-              authority: newProduct.diamondCertification,
-              number: '',
-            },
+            cut: variant.stoneCut,
+            clarity: option.quality,
+            color: variant.diamondTone,
+            certification: { authority: newProduct.diamondCertification, number: '' },
           },
           quantity: option.count,
         })),
-        priceBreakdown: {},
+        priceBreakdown: { total: variant.price },
       })),
       category: { name: newProduct.category },
       subCategory: { name: newProduct.subCategory },
@@ -2211,10 +1997,6 @@ const fetchMetalTypes = useCallback(async () => {
       setShowAddModal(false);
       setEditingProduct(null);
       setNewProduct(getInitialNewProductState());
-      setSelectedImages([]);
-      setImagePreviewUrls([]);
-      setActiveTab('basic');
-
     } catch (error) {
       console.error(`Error ${isEditing ? 'updating' : 'add'} product:`, error);
       alert(`Failed to ${isEditing ? 'update' : 'add'} product. See console for details.`);
@@ -2228,24 +2010,16 @@ const fetchMetalTypes = useCallback(async () => {
 
   const handleEditProduct = (product: JewelryProduct) => {
     setEditingProduct(product);
-    const productWithTierIds = {
+    const productToEdit = {
       ...product,
-      pricingTiers: product.pricingTiers.map(tier => ({
-        ...tier,
-        id: tier.id || crypto.randomUUID()
-      })),
+      variants: product.variants.map(v => ({ ...v, id: v.id || crypto.randomUUID() })),
       diamondOptions: product.diamondOptions?.map(option => ({
         ...option,
         id: option.id || crypto.randomUUID()
       })) || [],
       media: product.media || []
     };
-    setNewProduct(productWithTierIds);
-    if (product.media && product.media.length > 0) {
-      setImagePreviewUrls(product.media.map(m => m.url));
-    } else {
-      setImagePreviewUrls(product.images);
-    }
+    setNewProduct(productToEdit);
     setShowAddModal(true);
   };
 
@@ -2400,9 +2174,6 @@ const fetchMetalTypes = useCallback(async () => {
               setShowAddModal(true);
               setEditingProduct(null);
               setNewProduct(getInitialNewProductState());
-              setSelectedImages([]);
-              setImagePreviewUrls([]);
-              setActiveTab('basic');
             }}
             className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors flex items-center space-x-2"
           >
@@ -2481,7 +2252,6 @@ const fetchMetalTypes = useCallback(async () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category & Collection</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Specifications</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Weight & Dimensions</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pricing Tiers</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Certifications</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock & Status</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -2535,7 +2305,7 @@ const fetchMetalTypes = useCallback(async () => {
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                        <div className="text-sm text-gray-500">{product.sku}</div>
+                        <div className="text-sm text-gray-500">{product.variants[0]?.sku}</div>
                         {product.customizable && (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 mt-1">
                             <Palette className="h-3 w-3 mr-1" />
@@ -2576,15 +2346,6 @@ const fetchMetalTypes = useCallback(async () => {
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900">
-                      {product.pricingTiers.map((tier) => (
-                        <div key={tier.id} className="mb-1">
-                          <span className="font-medium">{tier.metalName} {tier.metalSubCategory}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900">
                       <div className="flex items-center mb-1">
                         <Shield className="h-3 w-3 text-blue-500 mr-1" />
                         <span className="text-xs">{product.diamondCertification}</span>
@@ -2598,7 +2359,7 @@ const fetchMetalTypes = useCallback(async () => {
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900">
-                      <div className="font-medium">Stock: {product.stock}</div>
+                      <div className="font-medium">Stock: {product.variants.reduce((sum, v) => sum + v.stock, 0)}</div>
                       <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(product.status)}`}>
                         {product.status}
                       </span>
@@ -2642,34 +2403,17 @@ const fetchMetalTypes = useCallback(async () => {
           setShowAddModal(false);
           setEditingProduct(null);
           setNewProduct(getInitialNewProductState());
-          setSelectedImages([]);
-          setImagePreviewUrls([]);
-          setActiveTab('basic');
         }}
         onAddProduct={handleAddProduct}
         editingProduct={editingProduct}
         newProduct={newProduct}
         setNewProduct={setNewProduct}
-        imagePreviewUrls={imagePreviewUrls}
-        setImagePreviewUrls={setImagePreviewUrls}
-        selectedImages={selectedImages}
-        setSelectedImages={setSelectedImages}
         getAvailableSizes={getAvailableSizes}
         handleSizeToggle={handleSizeToggle}
         sizeMasterList={sizeMasterList}
         setSizeMasterList={setSizeMasterList}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        metalTypes={apiMetalTypes}
-        metalQualities={apiMetalQualities}
-        metalColors={apiMetalColors}
-        diamondQualities={diamondQualities}
-        diamondTones={diamondTones}
-        shapes={shapes}
-        occasions={occasions}
-        genders={genders}
-        settingTypes={settingTypes}
-        stoneCuts={stoneCuts}
         customOptions={customOptions}
         addCustomOption={addCustomOption}
         getAllOptions={getAllOptions}
@@ -2686,6 +2430,16 @@ const fetchMetalTypes = useCallback(async () => {
         onAddCut={handleAddCut}
         diamondAttributes={diamondAttributes}
         settingStyles={apiSettingStyles}
+        handleMediaUpload={handleMediaUpload}
+        removeMedia={removeMedia}
+        addVariant={addVariant}
+        removeVariant={removeVariant}
+        handleVariantChange={handleVariantChange}
+        handleVariantMediaUpload={handleVariantMediaUpload}
+        removeVariantMedia={removeVariantMedia}
+        addVariantDiamondOption={addVariantDiamondOption}
+        removeVariantDiamondOption={removeVariantDiamondOption}
+        handleVariantDiamondOptionChange={handleVariantDiamondOptionChange}
       />
 
       {viewingProduct && (
@@ -2821,11 +2575,11 @@ const fetchMetalTypes = useCallback(async () => {
                 <div className="space-y-4">
                   <div>
                     <h3 className="text-2xl font-bold text-gray-900">{viewingProduct.name}</h3>
-                    <p className="text-gray-600">SKU: {viewingProduct.sku}</p>
+                    <p className="text-gray-600">SKU: {viewingProduct.variants[0]?.sku}</p>
                   </div>
                   <div className="flex items-center space-x-4">
                     <span className="text-2xl font-bold text-amber-600">
-                      {viewingProduct.pricingTiers[0] ? `${viewingProduct.pricingTiers[0].metalName} ${viewingProduct.pricingTiers[0].metalSubCategory}` : 'N/A'}
+                      ₹{viewingProduct.variants[0]?.price.toLocaleString()}
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-4 text-sm">
@@ -2839,7 +2593,7 @@ const fetchMetalTypes = useCallback(async () => {
                     </div>
                     <div>
                       <span className="font-medium text-gray-700">Stock:</span>
-                      <p className="text-gray-600">{viewingProduct.stock} units</p>
+                      <p className="text-gray-600">{viewingProduct.variants.reduce((sum, v) => sum + v.stock, 0)} units</p>
                     </div>
                     <div>
                       <span className="font-medium text-gray-700">Weight:</span>
