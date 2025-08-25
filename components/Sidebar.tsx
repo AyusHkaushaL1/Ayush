@@ -6,7 +6,8 @@ import {
   Users,
   Warehouse,
   Gem,
-  X
+  X,
+  Ruler 
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -27,6 +28,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: 'products', label: 'Products', icon: Package },
     { id: 'orders', label: 'Orders', icon: ShoppingCart },
     { id: 'inventory', label: 'Inventory', icon: Warehouse },
+    { id: 'attributes', label: 'Attributes', icon: Ruler },
     { id: 'user', label: 'User Login', icon: Users },
   ];
 

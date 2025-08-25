@@ -10,6 +10,7 @@ import Customers from '@/components/Customers';
 import Inventory from '@/components/Inventory';
  import Settings from '@/components/Settings';
 import Login from '@/components/Login';     
+import AttributeManager from '@/components/AttributeManager';
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -31,6 +32,8 @@ export default function AdminPage() {
          return <Settings />;
          case 'user':
          return <Login />;
+         case 'attributes':
+         return <AttributeManager />;
       default:
         return <Dashboard />;
     }
