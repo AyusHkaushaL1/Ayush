@@ -24,7 +24,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   setSidebarOpen 
 }) => {
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    // { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'products', label: 'Products', icon: Package },
     { id: 'orders', label: 'Orders', icon: ShoppingCart },
     // { id: 'inventory', label: 'Inventory', icon: Warehouse },

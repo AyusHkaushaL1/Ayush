@@ -1892,94 +1892,112 @@ const Products: FC = () => {
   };
 
   const handleAddProduct = async (isEditing: boolean) => {
-    if (!newProduct.name || !newProduct.category || !newProduct.variants || newProduct.variants.length === 0) {
-      alert('Please fill in Product Name, Category, and at least one Variant.');
-      return;
-    }
-    
-    const areVariantsValid = newProduct.variants.every(v => v.sku && v.price > 0 && v.stock >= 0);
-    if (!areVariantsValid) {
-        alert('Please ensure all variants have a SKU, Price, and Stock.');
-        return;
-    }
+  if (!newProduct.name || !newProduct.category || !newProduct.variants || newProduct.variants.length === 0) {
+    alert('Please fill in Product Name, Category, and at least one Variant.');
+    return;
+  }
 
-    const imageMedia = (newProduct.media || []).filter(m => m.type === 'image');
-    const videoMedia = (newProduct.media || []).find(m => m.type === 'video');
-    const model3dMedia = (newProduct.media || []).find(m => m.type === '3d_model');
+  const areVariantsValid = newProduct.variants.every(v => v.sku && v.price > 0 && v.stock >= 0);
+  if (!areVariantsValid) {
+    alert('Please ensure all variants have a SKU, Price, and Stock.');
+    return;
+  }
 
-    const payload = {
-      title: newProduct.name,
-      slug: newProduct.name.toLowerCase().replace(/ /g, '-'),
-      description: newProduct.description,
-      productType: 'standard',
-      media: {
-        coverImages: imageMedia.map(m => m.url),
-        videoUrl: videoMedia ? videoMedia.url : undefined,
-        model3dUrl: model3dMedia ? [model3dMedia.url] : [],
+  // Build media
+  const imageMedia = (newProduct.media || []).filter(m => m.type === 'image');
+  const videoMedia = (newProduct.media || []).find(m => m.type === 'video');
+  const model3dMedia = (newProduct.media || []).find(m => m.type === '3d_model');
+
+  // Assemble payload expected by API
+  const payload = {
+    title: newProduct.name,
+    slug: newProduct.name!.toLowerCase().replace(/ /g, '-'),
+    description: newProduct.description,
+    productType: 'standard',
+    media: {
+      coverImages: imageMedia.map(m => m.url),
+      videoUrl: videoMedia ? videoMedia.url : undefined,
+      model3dUrl: model3dMedia ? [model3dMedia.url] : [],
+    },
+    variants: (newProduct.variants || []).map(variant => ({
+      SKU: variant.sku,
+      isAvailable: variant.stock > 0,
+      metalConfig: {
+        type: newProduct.metalQuality,
+        purity: variant.metalQuality,
+        color: variant.metalColor,
+        stock: variant.stock,
+        certification: { authority: newProduct.goldCertification, number: '' },
       },
-      variants: (newProduct.variants || []).map(variant => ({
-        SKU: variant.sku,
-        isAvailable: variant.stock > 0,
-        metalConfig: {
-          type: newProduct.metalQuality, // This might need to become variant-specific
-          purity: variant.metalQuality,
-          color: variant.metalColor,
-          stock: variant.stock,
-          certification: { authority: newProduct.goldCertification, number: '' },
+      diamondConfigs: (variant.diamondOptions || []).map(option => ({
+        diamond: {
+          shape: option.shape,
+          cut: variant.stoneCut,
+          clarity: option.quality,
+          color: variant.diamondTone,
+          certification: { authority: newProduct.diamondCertification, number: '' },
         },
-        diamondConfigs: (variant.diamondOptions || []).map(option => ({
-          diamond: {
-            shape: option.shape,
-            cut: variant.stoneCut,
-            clarity: option.quality,
-            color: variant.diamondTone,
-            certification: { authority: newProduct.diamondCertification, number: '' },
-          },
-          quantity: option.count,
-        })),
-        priceBreakdown: { total: variant.price },
+        quantity: option.count,
       })),
-      category: { name: newProduct.category },
-      subCategory: { name: newProduct.subCategory },
-      collection: newProduct.collection,
-      occasion: newProduct.occasion,
-      gender: newProduct.gender,
-      tags: newProduct.tags,
-      warranty: newProduct.warranty,
-      returnPolicy: newProduct.returnPolicy,
-      isCustomizable: newProduct.customizable,
+      priceBreakdown: { total: variant.price },
+    })),
+    category: { name: newProduct.category },
+    subCategory: { name: newProduct.subCategory },
+    collection: newProduct.collection,
+    occasion: newProduct.occasion,
+    gender: newProduct.gender,
+    tags: newProduct.tags,
+    warranty: newProduct.warranty,
+    returnPolicy: newProduct.returnPolicy,
+    isCustomizable: newProduct.customizable,
+  };
+
+  const method = isEditing ? 'PUT' : 'POST';
+  const url = isEditing
+    ? `http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/products/${editingProduct?.id}`
+    : `http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/products`;
+
+  try {
+    const response = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    // Robust response handling: check response.ok before parsing body
+    // Try to parse JSON if present; fall back to text for non-JSON payloads
+    const contentType = response.headers.get('content-type') || '';
+    const parseBody = async () => {
+      try {
+        if (contentType.includes('application/json')) return await response.json();
+        const text = await response.text();
+        return text ? { message: text } : {};
+      } catch {
+        return {};
+      }
     };
 
-    const method = isEditing ? 'PUT' : 'POST';
-    const url = isEditing
-      ? `http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/products/${editingProduct?.id}`
-      : `http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/products`;
+    const data = await parseBody();
 
-    try {
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`API Error: ${errorData.message}`);
-      }
-
-      alert(`Product ${isEditing ? 'updated' : 'added'} successfully!`);
-      fetchProducts();
-      setShowAddModal(false);
-      setEditingProduct(null);
-      setNewProduct(getInitialNewProductState());
-    } catch (error) {
-      console.error(`Error ${isEditing ? 'updating' : 'add'} product:`, error);
-      alert(`Failed to ${isEditing ? 'update' : 'add'} product. See console for details.`);
+    if (!response.ok) {
+      const message = (data && (data.message || data.error || JSON.stringify(data))) || `${response.status} ${response.statusText}`;
+      throw new Error(message);
     }
-  };
+
+    alert(`Product ${isEditing ? 'updated' : 'added'} successfully!`);
+    await fetchProducts(); // refresh list
+    setShowAddModal(false);
+    setEditingProduct(null);
+    setNewProduct(getInitialNewProductState());
+  } catch (error: any) {
+    console.error(`Error ${isEditing ? 'updating' : 'adding'} product:`, error);
+    alert(`Failed to ${isEditing ? 'update' : 'add'} product: ${error?.message || 'Unknown error'}.`);
+  }
+};
+
 
   const handleViewProduct = (product: JewelryProduct) => {
     setViewingProduct(product);

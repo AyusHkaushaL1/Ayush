@@ -18,8 +18,8 @@ export default function AdminPage() {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'dashboard':
-        return <Dashboard />;
+      // case 'dashboard':
+      //   return <Dashboard />;
       case 'products':
         return <Products />;
       case 'orders':
@@ -35,7 +35,7 @@ export default function AdminPage() {
          case 'attributes':
          return <AttributeManager />;
       default:
-        return <Dashboard />;
+        return <Products />;
     }
   };
 
