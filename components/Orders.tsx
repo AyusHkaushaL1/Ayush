@@ -238,29 +238,18 @@ const Orders: React.FC = () => {
 
     if (isEditing) {
       return (
-        <select
-          value={order.status}
-          onChange={(e) => {
-            if (e.target.value === '__ADD_NEW__') {
-              setIsAddingNewStatus(order.id);
-              setEditingStatus(null);
-            } else {
-              updateOrderStatusOnApi(order.id, e.target.value);
-              setEditingStatus(null);
-            }
-          }}
-          onBlur={() => setEditingStatus(null)}
-          className="px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-          autoFocus
-        >
-          {availableStatuses.map(status => (
-            <option key={status} value={status}>{status}</option>
-          ))}
-          <option value="__ADD_NEW__" className="text-amber-600 font-medium">
-            + Add New Status
-          </option>
-        </select>
-      );
+  <select
+    value={order.status}
+    onChange={(e) => updateOrderStatusOnApi(order.id, e.target.value)}
+    className="px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+  >
+    <option value="placed">Placed</option>
+    <option value="shipped">Shipped</option>
+    <option value="delivered">Delivered</option>
+    <option value="cancelled">Cancelled</option>
+    <option value="returned">Returned</option>
+  </select>
+);
     }
     
     if (isUpdating) {

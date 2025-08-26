@@ -27,7 +27,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'products', label: 'Products', icon: Package },
     { id: 'orders', label: 'Orders', icon: ShoppingCart },
-    { id: 'inventory', label: 'Inventory', icon: Warehouse },
+    // { id: 'inventory', label: 'Inventory', icon: Warehouse },
     { id: 'attributes', label: 'Attributes', icon: Ruler },
     { id: 'user', label: 'User Login', icon: Users },
   ];

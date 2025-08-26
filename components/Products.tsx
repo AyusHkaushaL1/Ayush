@@ -413,7 +413,6 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                 { id: 'basic', label: 'Basic Info', icon: FileText },
                 { id: 'specifications', label: 'Specifications', icon: Gem },
                 { id: 'customization', label: 'Customization', icon: Palette },
-                { id: 'additional', label: 'Additional Info', icon: Settings }
               ].map((tab) => {
                 const Icon = tab.icon;
                 return (
@@ -1012,24 +1011,6 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
               )}
             </div>
           )}
-
-          {activeTab === 'additional' && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Stone Color</label>
-                  <input
-                    type="text"
-                    name="stoneColor"
-                    value={newProduct.stoneColor || ''}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    placeholder="e.g., D, E, F"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 sticky bottom-0 bg-white">
@@ -1043,10 +1024,7 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
     </div>
   );
 });
-
 AddProductModal.displayName = 'AddProductModal';
-
-
 interface ApiDiamondConfig {
   diamond: {
     clarity: string;
@@ -2182,67 +2160,6 @@ const Products: FC = () => {
           </button>
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Products</p>
-              <p className="text-2xl font-bold text-gray-900">{products.length}</p>
-            </div>
-            <div className="bg-amber-100 p-3 rounded-full">
-              <Gem className="h-6 w-6 text-amber-600" />
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Customizable</p>
-              <p className="text-2xl font-bold text-gray-900">{products.filter(p => p.customizable).length}</p>
-            </div>
-            <div className="bg-purple-100 p-3 rounded-full">
-              <Palette className="h-6 w-6 text-purple-600" />
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Avg. Rating</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {(products.length > 0 ? (products.reduce((sum, p) => sum + p.rating, 0) / products.length) : 0).toFixed(1)}
-              </p>
-            </div>
-            <div className="bg-yellow-100 p-3 rounded-full">
-              <Star className="h-6 w-6 text-yellow-600" />
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Categories</p>
-              <p className="text-2xl font-bold text-gray-900">{apiCategories.length}</p>
-            </div>
-            <div className="bg-blue-100 p-3 rounded-full">
-              <FileText className="h-6 w-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Value</p>
-              <p className="text-2xl font-bold text-gray-900">
-                ₹{(products.length * 50000 / 1000000).toFixed(1)}M
-              </p>
-            </div>
-            <div className="bg-green-100 p-3 rounded-full">
-              <DollarSign className="h-6 w-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-      </div>
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -2654,4 +2571,4 @@ const Products: FC = () => {
   );
 };
 
-export default Products;
+export default Products; 
