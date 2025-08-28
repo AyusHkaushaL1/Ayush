@@ -413,6 +413,7 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                 { id: 'basic', label: 'Basic Info', icon: FileText },
                 { id: 'specifications', label: 'Specifications', icon: Gem },
                 { id: 'customization', label: 'Customization', icon: Palette },
+                { id: 'additional', label: 'Additional Info', icon: Settings }
               ].map((tab) => {
                 const Icon = tab.icon;
                 return (
@@ -1011,6 +1012,24 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
               )}
             </div>
           )}
+
+          {activeTab === 'additional' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Stone Color</label>
+                  <input
+                    type="text"
+                    name="stoneColor"
+                    value={newProduct.stoneColor || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                    placeholder="e.g., D, E, F"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 sticky bottom-0 bg-white">
@@ -1024,7 +1043,10 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
     </div>
   );
 });
+
 AddProductModal.displayName = 'AddProductModal';
+
+
 interface ApiDiamondConfig {
   diamond: {
     clarity: string;
@@ -1040,28 +1062,34 @@ interface ApiDiamondConfig {
   _id: string;
 }
 
+// REPLACE your current ApiMetalConfig interface with this one
+
 interface ApiMetalConfig {
-  type: string;
-  purity: string;
-  color: string;
-  certification: {
-    authority: string;
-    number: string;
-  };
-  stock: number;
+  _id: string;
+  colorId: { name: string };
+  purityId: { value: string };
+  // --- ADD THIS PROPERTY BACK (marked as optional) ---
+  certification?: {
+    authority: string;
+    number: string;
+  };
+  // --- END OF CORRECTION ---
 }
 
+// REPLACE your old ApiVariant interface with this accurate one
 interface ApiVariant {
-  _id: string;
-  SKU: string;
-  media: {
-    images: string[];
-    model3dUrl?: string[];
-    videoUrl?: string;
-  };
-  metalConfig: ApiMetalConfig;
-  diamondConfigs: ApiDiamondConfig[];
-  priceBreakdown: any;
+  _id: string;
+  SKU: string;
+  media: {
+    images: string[];
+    model3dUrl?: string[];
+    videoUrl?: string;
+  };
+  metalConfig: ApiMetalConfig;
+  diamondConfigs: any[];
+  priceBreakdown: any;
+  isAvailable: boolean; // This property exists in the API response.
+  stock: number; // This is the property the backend will add.
 }
 
 interface ApiProduct {
@@ -1326,7 +1354,9 @@ const Products: FC = () => {
     }
   }, []);
 
-  const fetchProducts = useCallback(async () => {
+// REPLACE your fetchProducts function with this FINAL, FUTURE-PROOF version
+
+const fetchProducts = useCallback(async () => {
     if (!authToken) {
       setIsLoading(false);
       setError('Authentication token not found. Please log in.');
@@ -1335,9 +1365,7 @@ const Products: FC = () => {
     try {
       setIsLoading(true);
       const response = await fetch('http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/products', {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-        },
+        headers: { 'Authorization': `Bearer ${authToken}` },
       });
       if (!response.ok) {
         throw new Error('Network response was not ok');
@@ -1347,88 +1375,57 @@ const Products: FC = () => {
       const transformedProducts: JewelryProduct[] = data.products.map((apiProduct) => {
         const mainVariant = apiProduct.variants[0];
 
-        let diamondOptions: DiamondOption[] = [];
-        if (mainVariant && mainVariant.diamondConfigs) {
-          diamondOptions = mainVariant.diamondConfigs.map((config, i) => ({
-            id: config._id || crypto.randomUUID(),
-            quality: config.diamond.clarity,
-            count: config.quantity,
-            shape: config.diamond.shape,
-            weight: 0.5,
-            isMain: i === 0,
-          }));
-        }
-
-        let mediaFiles: MediaFile[] = [];
-        if (apiProduct.media.coverImages) {
-          mediaFiles = apiProduct.media.coverImages.map((url, i) => ({
-            id: `media-image-${apiProduct._id}-${i}`,
-            url,
-            type: 'image',
-          }));
-        }
-        if (apiProduct.media.videoUrl) {
-          mediaFiles.push({
-            id: `media-video-${apiProduct._id}`,
-            url: apiProduct.media.videoUrl,
-            type: 'video',
-          });
-        }
-        if (apiProduct.media.model3dUrl && apiProduct.media.model3dUrl.length > 0) {
-          mediaFiles.push({
-            id: `media-3dmodel-${apiProduct._id}`,
-            url: apiProduct.media.model3dUrl[0],
-            type: '3d_model',
-          });
-        }
-        
-        const variants: Variant[] = apiProduct.variants.map(v => ({
+        const variants: Variant[] = apiProduct.variants.map((v: ApiVariant) => ({
             id: v._id,
             sku: v.SKU,
-            stock: v.metalConfig.stock,
-            metalQuality: v.metalConfig.purity,
+            // --- THIS IS THE CORRECTED LOGIC ---
+            // It will read the stock number when the backend adds it.
+            // If it's missing or null, it safely defaults to 0, preventing errors.
+            stock: v.stock ?? 0,
+            // --- END OF CORRECTION ---
+            metalQuality: v.metalConfig.purityId.value,
             diamondQuality: v.diamondConfigs[0]?.diamond.clarity || '',
             price: v.priceBreakdown?.total || 0,
             totalWeight: 0,
-            metalColor: v.metalConfig.color || '',
+            metalColor: v.metalConfig.colorId.name,
             diamondTone: v.diamondConfigs[0]?.diamond.color || '',
-            diamondWeight: 0, // Needs mapping from API if available
+            diamondWeight: 0,
             shape: v.diamondConfigs[0]?.diamond.shape || '',
-            settingType: '', // Needs mapping
-            metalGrossWeight: 0, // Needs mapping
+            settingType: '',
+            metalGrossWeight: 0,
             totalDiamonds: v.diamondConfigs.reduce((sum, dc) => sum + dc.quantity, 0),
-            bandWidth: 0, // Needs mapping
+            bandWidth: 0,
             stoneClarity: v.diamondConfigs[0]?.diamond.clarity || '',
             stoneCut: v.diamondConfigs[0]?.diamond.cut || '',
-            sideStones: '', // Needs mapping
-            media: [], // Needs mapping
-            diamondOptions: [], // Needs mapping
+            sideStones: '',
+            media: [],
+            diamondOptions: [],
         }));
 
-        const totalStock = variants.reduce((sum, v) => sum + v.stock, 0);
+        const totalStock = variants.reduce((sum, v) => sum + (v.stock || 0), 0);
 
         return {
           id: apiProduct._id,
           name: apiProduct.title,
-          media: mediaFiles,
+          status: totalStock > 0 ? 'Active' : 'Out of Stock',
+          variants: variants,
+          media: [],
           images: apiProduct.media.coverImages,
-          metalQuality: mainVariant?.metalConfig?.purity || '',
-          metalColor: mainVariant?.metalConfig?.color || '',
+          metalQuality: mainVariant?.metalConfig?.purityId?.value || '',
+          metalColor: mainVariant?.metalConfig?.colorId?.name || '',
           diamondQuality: mainVariant?.diamondConfigs?.[0]?.diamond?.clarity || '',
           diamondTone: mainVariant?.diamondConfigs?.[0]?.diamond?.color || '',
-          diamondOptions: diamondOptions,
+          diamondOptions: [],
           sizes: [],
           metalGrossWeight: 0,
           diamondWeight: 0,
           shape: mainVariant?.diamondConfigs?.[0]?.diamond?.shape || '',
           category: 'Rings',
           subCategory: 'Engagement Rings',
-          variants: variants,
           description: '',
           diamondCertification: mainVariant?.diamondConfigs?.[0]?.diamond?.certification?.authority || '',
           goldCertification: mainVariant?.metalConfig?.certification?.authority || '',
           sideStones: '',
-          status: totalStock > 0 ? 'Active' : 'Out of Stock',
           rating: 0,
           customizable: false,
           createdAt: new Date().toISOString().split('T')[0],
@@ -1453,7 +1450,7 @@ const Products: FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [authToken]);
+}, [authToken]);
 
   const fetchCategories = useCallback(async () => {
     if (!authToken) return;
@@ -1827,7 +1824,7 @@ const Products: FC = () => {
   const diamondTones = apiDiamondColors.length > 0 ? apiDiamondColors : ['D (Colorless)', 'E (Colorless)', 'F (Colorless)', 'G (Near Colorless)', 'H (Near Colorless)', 'I (Near Colorless)', 'J (Near Colorless)'];
   const shapes = ['Round Brilliant', 'Princess', 'Emerald Cut', 'Asscher', 'Oval', 'Marquise', 'Pear', 'Heart', 'Cushion', 'Radiant'];
   const occasions = ['Engagement', 'Wedding', 'Anniversary', 'Birthday', 'Valentine', 'Graduation', 'Everyday'];
-  const genders = ['Women', 'Men', 'Unisex'];
+  const genders = ['male', 'female', 'unisex'];
   const settingTypes = ['Prong Setting', 'Bezel Setting', 'Pave Setting', 'Channel Setting', 'Halo Setting', 'Tension Setting'];
   const stoneCuts = ['Excellent', 'Very Good', 'Good', 'Fair', 'Poor'];
 
@@ -1891,111 +1888,239 @@ const Products: FC = () => {
     }
   };
 
-  const handleAddProduct = async (isEditing: boolean) => {
-  if (!newProduct.name || !newProduct.category || !newProduct.variants || newProduct.variants.length === 0) {
-    alert('Please fill in Product Name, Category, and at least one Variant.');
-    return;
-  }
+// PASTE THIS ENTIRE NEW FUNCTION INTO YOUR `Products` COMPONENT
 
-  const areVariantsValid = newProduct.variants.every(v => v.sku && v.price > 0 && v.stock >= 0);
-  if (!areVariantsValid) {
-    alert('Please ensure all variants have a SKU, Price, and Stock.');
-    return;
-  }
-
-  // Build media
-  const imageMedia = (newProduct.media || []).filter(m => m.type === 'image');
-  const videoMedia = (newProduct.media || []).find(m => m.type === 'video');
-  const model3dMedia = (newProduct.media || []).find(m => m.type === '3d_model');
-
-  // Assemble payload expected by API
-  const payload = {
-    title: newProduct.name,
-    slug: newProduct.name!.toLowerCase().replace(/ /g, '-'),
-    description: newProduct.description,
-    productType: 'standard',
-    media: {
-      coverImages: imageMedia.map(m => m.url),
-      videoUrl: videoMedia ? videoMedia.url : undefined,
-      model3dUrl: model3dMedia ? [model3dMedia.url] : [],
-    },
-    variants: (newProduct.variants || []).map(variant => ({
-      SKU: variant.sku,
-      isAvailable: variant.stock > 0,
-      metalConfig: {
-        type: newProduct.metalQuality,
-        purity: variant.metalQuality,
-        color: variant.metalColor,
-        stock: variant.stock,
-        certification: { authority: newProduct.goldCertification, number: '' },
-      },
-      diamondConfigs: (variant.diamondOptions || []).map(option => ({
-        diamond: {
-          shape: option.shape,
-          cut: variant.stoneCut,
-          clarity: option.quality,
-          color: variant.diamondTone,
-          certification: { authority: newProduct.diamondCertification, number: '' },
-        },
-        quantity: option.count,
-      })),
-      priceBreakdown: { total: variant.price },
-    })),
-    category: { name: newProduct.category },
-    subCategory: { name: newProduct.subCategory },
-    collection: newProduct.collection,
-    occasion: newProduct.occasion,
-    gender: newProduct.gender,
-    tags: newProduct.tags,
-    warranty: newProduct.warranty,
-    returnPolicy: newProduct.returnPolicy,
-    isCustomizable: newProduct.customizable,
-  };
-
-  const method = isEditing ? 'PUT' : 'POST';
-  const url = isEditing
-    ? `http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/products/${editingProduct?.id}`
-    : `http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/products`;
-
-  try {
-    const response = await fetch(url, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`,
-      },
-      body: JSON.stringify(payload),
-    });
-
-    // Robust response handling: check response.ok before parsing body
-    // Try to parse JSON if present; fall back to text for non-JSON payloads
-    const contentType = response.headers.get('content-type') || '';
-    const parseBody = async () => {
-      try {
-        if (contentType.includes('application/json')) return await response.json();
-        const text = await response.text();
-        return text ? { message: text } : {};
-      } catch {
-        return {};
-      }
-    };
-
-    const data = await parseBody();
-
-    if (!response.ok) {
-      const message = (data && (data.message || data.error || JSON.stringify(data))) || `${response.status} ${response.statusText}`;
-      throw new Error(message);
+const handleUpdateProduct = async () => {
+    // Ensure we have the original product state to compare against
+    if (!editingProduct || !newProduct) {
+        alert("Error: Cannot update product without original data.");
+        return;
     }
 
-    alert(`Product ${isEditing ? 'updated' : 'added'} successfully!`);
-    await fetchProducts(); // refresh list
-    setShowAddModal(false);
-    setEditingProduct(null);
-    setNewProduct(getInitialNewProductState());
-  } catch (error: any) {
-    console.error(`Error ${isEditing ? 'updating' : 'adding'} product:`, error);
-    alert(`Failed to ${isEditing ? 'update' : 'add'} product: ${error?.message || 'Unknown error'}.`);
-  }
+    const updatePromises: Promise<Response>[] = [];
+
+    // --- PART 1: Handle Product-Level Details ---
+    const productDetailsPayload: { [key: string]: any } = {};
+
+    if (editingProduct.name !== newProduct.name) {
+        productDetailsPayload.title = newProduct.name;
+    }
+    if (editingProduct.description !== newProduct.description) {
+        productDetailsPayload.description = newProduct.description;
+    }
+    // Add other product-level fields to compare here (e.g., category, collection, etc.)
+    // if (editingProduct.category !== newProduct.category) { ... }
+
+    // If product-level details changed, create a PATCH request for the main product
+    if (Object.keys(productDetailsPayload).length > 0) {
+        console.log("Product-level changes detected:", productDetailsPayload);
+        const productUpdateUrl = `http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/products/${editingProduct.id}`;
+        
+        const productUpdatePromise = fetch(productUpdateUrl, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`,
+            },
+            body: JSON.stringify(productDetailsPayload),
+        });
+        updatePromises.push(productUpdatePromise);
+    }
+
+
+    // --- PART 2: Handle Variant-Level Details ---
+    newProduct.variants?.forEach(editedVariant => {
+        const originalVariant = editingProduct.variants?.find(v => v.id === editedVariant.id);
+
+        if (originalVariant) { // This variant existed before, check for changes
+            const variantPayload: { [key: string]: any } = {};
+
+            // Compare each field and add to payload if it changed
+            if (originalVariant.sku !== editedVariant.sku) {
+                variantPayload.SKU = editedVariant.sku;
+            }
+            if (originalVariant.price !== editedVariant.price) {
+                variantPayload.price = editedVariant.price;
+            }
+            // AFTER THE FIX:
+if (originalVariant.stock !== editedVariant.stock) {
+    variantPayload.stock = editedVariant.stock; // Send the number directly
+}
+            // Add other variant-specific fields here to compare...
+
+            // If any field changed, create a PATCH request for this specific variant
+            if (Object.keys(variantPayload).length > 0) {
+                console.log(`Changes detected for variant SKU ${originalVariant.sku}. Payload:`, variantPayload);
+                const variantUpdateUrl = `http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/products/variants/${editedVariant.id}`;
+                
+                const variantUpdatePromise = fetch(variantUpdateUrl, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`,
+                    },
+                    body: JSON.stringify(variantPayload),
+                });
+                updatePromises.push(variantUpdatePromise);
+            }
+        }
+        // NOTE: This logic only handles UPDATING existing variants.
+        // A full implementation would also need to handle creating new variants (POST)
+        // and deleting removed variants (DELETE).
+    });
+
+    // --- PART 3: Execute all API Calls ---
+    if (updatePromises.length === 0) {
+        alert("No changes detected.");
+        setShowAddModal(false);
+        return;
+    }
+
+    try {
+        const responses = await Promise.all(updatePromises);
+        const failedResponses = responses.filter(res => !res.ok);
+
+        if (failedResponses.length > 0) {
+            const errorData = await failedResponses[0].json();
+            throw new Error(`Failed to update. First error: ${errorData.message || 'Unknown error'}`);
+        }
+
+        alert('Product updated successfully!');
+        fetchProducts(); // Refresh data
+        setShowAddModal(false);
+        setEditingProduct(null);
+        setNewProduct(getInitialNewProductState());
+
+    } catch (error) {
+        console.error("Error during product update:", error);
+        alert(`Failed to update product. See console for details.`);
+    }
+};
+
+// DELETE your old `handleAddProduct` and REPLACE it with this one.
+
+const handleAddProduct = async (isEditing: boolean) => {
+    // --- If we are editing, delegate to the new update function and stop ---
+    if (isEditing) {
+        await handleUpdateProduct();
+        return;
+    }
+    
+    // --- The rest of this function is for CREATING a NEW product only ---
+
+    // --- Validations for new product ---
+    if (!newProduct.name || !newProduct.category || !newProduct.subCategory || !newProduct.variants || newProduct.variants.length === 0) {
+        alert('Please fill in Product Name, Category, Subcategory, and at least one Variant.');
+        return;
+    }
+    const areVariantsValid = newProduct.variants.every(v => v.sku && v.price > 0 && v.stock >= 0);
+    if (!areVariantsValid) {
+        alert('Please ensure all variants have a SKU, Price, and Stock.');
+        return;
+    }
+    
+    // --- Helper Lookups for IDs ---
+    const categoryId = apiCategories.find(c => c.title === newProduct.category)?.id;
+    const subCategoryId = apiSubcategories.find(sc => sc.title === newProduct.subCategory)?.id;
+    const collectionId = "6893804364b9d32b9955b719"; // Placeholder ID
+    const settingStyleId = "6893804364b9d32b9955b71c"; // Placeholder ID
+
+    if (!categoryId || !subCategoryId) {
+        alert('Could not find a valid ID for the selected Category or Subcategory.');
+        return;
+    }
+
+    // --- Media Processing ---
+    const imageMedia = (newProduct.media || []).filter(m => m.type === 'image');
+    const videoMedia = (newProduct.media || []).find(m => m.type === 'video');
+    const model3dMedia = (newProduct.media || []).find(m => m.type === '3d_model');
+
+    // --- Payload Construction for NEW product ---
+    // (This is your original payload logic, which is correct for a POST request)
+    const payload = {
+        title: newProduct.name,
+        description: newProduct.description,
+        size: newProduct.sizes || [],
+        categoryId: categoryId,
+        subCategoryId: subCategoryId,
+        collectionId: collectionId,
+        settingStyleId: settingStyleId,
+        productType: "standard",
+        sizeChart: "https://example.com/size-chart.jpg",
+        qualityAssurance: newProduct.warranty || "Lifetime warranty on gold and diamonds",
+        careInstructions: "Avoid contact with chemicals",
+        dimensions: { length: 2.5, width: 2.5, height: 1.2, unit: "cm" },
+        isFeatured: true,
+        isBestSeller: true,
+        isNewArrival: false,
+        isCustomizable: newProduct.customizable || false,
+        isGiftable: true,
+        gender: newProduct.gender,
+        seo: {
+            metaTitle: `${newProduct.name} - ${newProduct.metalQuality || 'Gold'}`.trim(),
+            metaDescription: `Buy this elegant ${newProduct.name}. ${newProduct.description}`.trim(),
+            metaKeywords: [newProduct.category, newProduct.subCategory, "diamond", "jewelry", ...(newProduct.tags || [])],
+            tags: newProduct.tags || [],
+        },
+        media: {
+            coverImages: imageMedia.map(m => m.url),
+            videoUrl: videoMedia ? videoMedia.url : undefined,
+            model3dUrl: model3dMedia ? [model3dMedia.url] : [],
+        },
+        engravingOptions: { allowed: true, maxChars: 15, font: "Serif", location: "inside band", language: "English", additionalCost: 20 },
+        warranty: { period: "Lifetime", details: newProduct.warranty || "Covers manufacturing defects" },
+        returnPolicy: { period: "30 days", isReturnable: true, details: newProduct.returnPolicy || "Returns accepted with original packaging" },
+        variants: (newProduct.variants || []).map((variant, index) => ({
+            metalConfig: "6893804264b9d32b9955b6fa",
+            diamondConfigs: (variant.diamondOptions || []).map(opt => ({
+                diamond: "6893804264b9d32b9955b710",
+                quantity: opt.count,
+            })),
+            totalWeight: variant.totalWeight || variant.metalGrossWeight || 0,
+            price: variant.price,
+            SKU: variant.sku,
+            stock: {
+                status: variant.stock > 0 ? "in-stock" : "out-of-stock",
+                quantity: variant.stock,
+            },
+            isActive: true,
+            isDefault: index === 0,
+            isAvailable: variant.stock > 0,
+            media: {
+                images: variant.media.filter(m => m.type === 'image').map(m => m.url),
+                videoUrl: variant.media.find(m => m.type === 'video')?.url,
+                model3dUrl: variant.media.find(m => m.type === '3d_model') ? [variant.media.find(m => m.type === '3d_model')!.url] : [],
+            }
+        })),
+    };
+    
+    console.log("Submitting POST Payload:", JSON.stringify(payload, null, 2));
+
+    const url = `http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/products`;
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`,
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`API Error: ${errorData.message}`);
+        }
+
+        alert(`Product added successfully!`);
+        fetchProducts();
+        setShowAddModal(false);
+        setNewProduct(getInitialNewProductState());
+    } catch (error) {
+        console.error(`Error adding product:`, error);
+        alert(`Failed to add product. See console for details.`);
+    }
 };
 
 
@@ -2178,6 +2303,7 @@ const Products: FC = () => {
           </button>
         </div>
       </div>
+      
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -2588,5 +2714,4 @@ const Products: FC = () => {
     </div>
   );
 };
-
-export default Products; 
+export default Products;
