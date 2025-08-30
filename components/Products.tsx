@@ -23,6 +23,7 @@ interface Variant {
   price: number;
   sku: string;
   stock: number;
+  metalType: string;
   metalQuality: string;
   metalColor: string;
   diamondTone: string;
@@ -266,6 +267,7 @@ interface AddProductModalProps {
     onAddSubcategory: (newSubcategory: string, parentId: string) => Promise<void>;
     onAddSettingStyle: (newSettingStyle: string) => Promise<void>;
     onAddMetalColor: (newMetalColor: string) => Promise<void>;
+    onAddMetalType: (newMetalType: string) => Promise<void>;
     onAddMetalQuality: (newMetalQuality: string) => Promise<void>;
     onAddDiamondColor: (newDiamondColor: string) => Promise<void>;
     onAddShape: (newShape: string) => Promise<void>;
@@ -313,6 +315,7 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
   onAddSubcategory,
   onAddSettingStyle,
   onAddMetalColor,
+  onAddMetalType,
   onAddMetalQuality,
   onAddDiamondColor,
   onAddShape,
@@ -722,7 +725,7 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                              </button>
                          </div>
                          
-                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">SKU *</label>
                                 <input
@@ -755,6 +758,19 @@ const AddProductModal: FC<AddProductModalProps> = memo(({
                                     placeholder="10"
                                 />
                             </div>
+                             <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Metal Type</label>
+        <EnhancedDropdown
+            name="metalType"
+            value={variant.metalType || ''}
+            onChange={(e) => handleVariantChange(variant.id, 'metalType', e.target.value)}
+            optionType="metalTypes"
+            placeholder="Select Metal Type"
+            options={getAllOptions('metalTypes')}
+            addCustomOption={addCustomOption}
+            onAddOption={onAddMetalType}
+        />
+    </div>
                              <div>
                                  <label className="block text-sm font-medium text-gray-700 mb-2">Metal Quality</label>
                                  <EnhancedDropdown
@@ -1146,6 +1162,7 @@ const Products: FC = () => {
   const [apiSubcategories, setApiSubcategories] = useState<{ title: string, id: string }[]>([]);
   const [apiSettingStyles, setApiSettingStyles] = useState<string[]>([]);
   const [apiMetalColors, setApiMetalColors] = useState<string[]>([]);
+  const [apiMetalTypes, setApiMetalTypes] = useState<string[]>([]);
   const [apiMetalQualities, setApiMetalQualities] = useState<string[]>([]);
   const [apiDiamondColors, setApiDiamondColors] = useState<string[]>([]);
   const [authToken, setAuthToken] = useState<string>('');
@@ -1165,6 +1182,7 @@ const Products: FC = () => {
       price: 0,
       sku: '',
       stock: 0,
+      metalType: '',
       metalQuality: '',
       metalColor: '',
       diamondTone: '',
@@ -1383,6 +1401,7 @@ const fetchProducts = useCallback(async () => {
             // If it's missing or null, it safely defaults to 0, preventing errors.
             stock: v.stock ?? 0,
             // --- END OF CORRECTION ---
+            metalType: '',
             metalQuality: v.metalConfig.purityId.value,
             diamondQuality: v.diamondConfigs[0]?.diamond.clarity || '',
             price: v.priceBreakdown?.total || 0,
@@ -1522,6 +1541,23 @@ const fetchProducts = useCallback(async () => {
           console.error("Error fetching setting styles:", error);
       }
   }, [authToken]);
+
+  const fetchMetalTypes = useCallback(async () => {
+    if (!authToken) return;
+    try {
+      const response = await fetch('http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/metalAttributes/types', {
+        headers: { 'Authorization': `Bearer ${authToken}` },
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch metal types');
+      }
+      const data = await response.json();
+      const fetchedTypes = Array.isArray(data.metalTypes) ? data.metalTypes.map((type: { name: string }) => type.name) : [];
+      setApiMetalTypes(fetchedTypes);
+    } catch (error) {
+      console.error("Error fetching metal types:", error);
+    }
+}, [authToken]);
 
   const fetchMetalColors = useCallback(async () => {
     if (!authToken) return;
@@ -1686,6 +1722,36 @@ const fetchProducts = useCallback(async () => {
     }
   }, [authToken, fetchDiamondColors, setNewProduct]);
 
+  const handleAddMetalType = useCallback(async (newMetalTypeName: string) => {
+    if (!authToken || !newMetalTypeName.trim()) {
+      alert("Metal type name cannot be empty.");
+      return;
+    }
+    try {
+      const payload = {
+        name: newMetalTypeName.trim(),
+        isActive: true,
+      };
+      const response = await fetch('http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/metalAttributes/types', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Failed to add metal type: ${errorData.message}`);
+      }
+      alert('Metal type added successfully!');
+      fetchMetalTypes();
+    } catch (error) {
+      console.error('Error adding new metal type:', error);
+      alert('Failed to add new metal type. Please try again.');
+    }
+}, [authToken, fetchMetalTypes]);
+
   const handleAddShape = useCallback(async (newShapeName: string) => {
     if (!authToken || !newShapeName.trim()) {
       alert("Shape name cannot be empty.");
@@ -1797,11 +1863,12 @@ const fetchProducts = useCallback(async () => {
       fetchCategories();
       fetchDiamondAttributes();
       fetchSettingStyles();
+      fetchMetalTypes();
       fetchMetalColors();
       fetchMetalQualities();
       fetchDiamondColors();
     }
-  }, [authToken, fetchProducts, fetchCategories, fetchDiamondAttributes, fetchSettingStyles, fetchMetalColors, fetchMetalQualities, fetchDiamondColors]);
+  }, [authToken, fetchProducts, fetchCategories, fetchDiamondAttributes, fetchSettingStyles, fetchMetalTypes, fetchMetalColors, fetchMetalQualities, fetchDiamondColors]);
   
   useEffect(() => {
     fetchSubcategories(newProduct.category || '');
@@ -1843,6 +1910,7 @@ const fetchProducts = useCallback(async () => {
 
   const getAllOptions = useCallback((optionType: string) => {
     const baseOptions: { [key: string]: string[] } = {
+      metalTypes: apiMetalTypes,
       metalQualities: apiMetalQualities,
       metalColors: apiMetalColors,
       diamondQualities,
@@ -1854,7 +1922,7 @@ const fetchProducts = useCallback(async () => {
       stoneCuts
     };
     return [...(baseOptions[optionType] || []), ...(customOptions[optionType] || [])];
-  }, [apiMetalQualities, apiMetalColors, diamondQualities, diamondTones, shapes, occasions, genders, settingTypes, stoneCuts, customOptions]);
+  }, [apiMetalTypes,apiMetalQualities, apiMetalColors, diamondQualities, diamondTones, shapes, occasions, genders, settingTypes, stoneCuts, customOptions]);
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -2483,6 +2551,7 @@ stock: variant.stock,
         onAddSubcategory={handleAddSubcategory}
         onAddSettingStyle={handleAddSettingStyle}
         onAddMetalColor={handleAddMetalColor}
+        onAddMetalType={handleAddMetalType}
         onAddMetalQuality={handleAddMetalQuality}
         onAddDiamondColor={handleAddDiamondColor}
         onAddShape={handleAddShape}

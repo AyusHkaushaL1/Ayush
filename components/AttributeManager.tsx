@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useEffect, FC } from 'react';
 import { Plus, Edit, Trash2, X, ChevronDown, ChevronUp } from 'lucide-react';
 
-
 // Reusable component for displaying and managing a list of attributes
 interface AttributeListProps {
   title: string;
@@ -12,7 +11,6 @@ interface AttributeListProps {
   isLoading: boolean;
   parentOptions?: { id: string; name: string; }[];
 }
-
 
 const AttributeList: FC<AttributeListProps> = ({
   title,
@@ -29,7 +27,6 @@ const AttributeList: FC<AttributeListProps> = ({
   const [editName, setEditName] = useState('');
   const [selectedParentId, setSelectedParentId] = useState('');
 
-
   const handleAdd = () => {
     if (newItemName.trim()) {
       onAdd(newItemName.trim(), selectedParentId || undefined);
@@ -43,7 +40,6 @@ const AttributeList: FC<AttributeListProps> = ({
     setEditName(item.name);
   };
 
-
   const handleEditSave = () => {
     if (editingItem && editName.trim()) {
       onEdit(editingItem.id, editName.trim(), editingItem.parentId);
@@ -51,7 +47,6 @@ const AttributeList: FC<AttributeListProps> = ({
       setEditName('');
     }
   };
-
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -150,7 +145,6 @@ const AttributeList: FC<AttributeListProps> = ({
   );
 };
 
-
 const AttributeManager: FC = () => {
   const [authToken, setAuthToken] = useState<string>('');
   const [activeTab, setActiveTab] = useState('categories');
@@ -159,6 +153,7 @@ const AttributeManager: FC = () => {
   const [subcategories, setSubcategories] = useState<{ id: string; name: string; parentId: string; }[]>([]);
   const [metalQualities, setMetalQualities] = useState<{ id: string; name: string; }[]>([]);
   const [metalColors, setMetalColors] = useState<{ id: string; name: string; }[]>([]);
+  const [metalTypes, setMetalTypes] = useState<{ id: string; name: string; }[]>([]); // New state for metal types
   const [diamondShapes, setDiamondShapes] = useState<{ id: string; name: string; }[]>([]);
   const [diamondCuts, setDiamondCuts] = useState<{ id: string; name: string; }[]>([]);
   const [diamondClarities, setDiamondClarities] = useState<{ id: string; name: string; }[]>([]);
@@ -166,7 +161,6 @@ const AttributeManager: FC = () => {
   const [settingStyles, setSettingStyles] = useState<{ id: string; name: string; }[]>([]);
   const [genders, setGenders] = useState<{ id: string; name: string; }[]>([]);
   const [occasions, setOccasions] = useState<{ id: string; name: string; }[]>([]);
-
 
   useEffect(() => {
     const savedGenders = localStorage.getItem('genders');
@@ -177,23 +171,18 @@ const AttributeManager: FC = () => {
     else setOccasions([{ id: 'local-occasion-1', name: 'Engagement' }, { id: 'local-occasion-2', name: 'Wedding' }, { id: 'local-occasion-3', name: 'Anniversary' }]);
   }, []);
 
-
   useEffect(() => { localStorage.setItem('genders', JSON.stringify(genders)); }, [genders]);
   useEffect(() => { localStorage.setItem('occasions', JSON.stringify(occasions)); }, [occasions]);
   const handleLocalAdd = (setter: React.Dispatch<React.SetStateAction<{ id: string; name: string; }[]>>, name: string) => setter(prev => [...prev, { id: crypto.randomUUID(), name }]);
   const handleLocalEdit = (setter: React.Dispatch<React.SetStateAction<{ id: string; name: string; }[]>>, id: string, newName: string) => setter(prev => prev.map(item => item.id === id ? { ...item, name: newName } : item));
   const handleLocalDelete = (setter: React.Dispatch<React.SetStateAction<{ id: string; name: string; }[]>>, id: string) => { if (window.confirm('Are you sure?')) setter(prev => prev.filter(item => item.id !== id)); };
 
-
   const BASE_URL = 'http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory';
-
   
-
   useEffect(() => {
     const storedCredentials = localStorage.getItem('userCredentials');
     if (storedCredentials) setAuthToken(JSON.parse(storedCredentials).token);
   }, []);
-
 
   const fetchData = useCallback(async (endpoint: string, stateSetter: (data: any[]) => void) => {
     if (!authToken) return;
@@ -232,7 +221,9 @@ const AttributeManager: FC = () => {
   const handleAdd = useCallback(async (endpoint: string, name: string, parentId?: string) => {
     if (!name.trim()) return;
     let payload: any = { title: name.trim() };
-    if (endpoint.includes('colors') || endpoint.includes('shapes') || endpoint.includes('cuts') || endpoint.includes('clarities')) payload = { name: name.trim() };
+    if (endpoint.includes('colors') || endpoint.includes('shapes') || endpoint.includes('cuts') || endpoint.includes('clarities') || endpoint.includes('types')) {
+      payload = { name: name.trim() };
+    }
     if (endpoint.includes('purities')) payload = { value: name.trim() };
     if (parentId) payload.parentId = parentId;
 
@@ -243,11 +234,12 @@ const AttributeManager: FC = () => {
     } catch (error) { console.error('Error adding attribute:', error); }
   }, [authToken, fetchData]);
 
-
   const handleEdit = useCallback(async (endpoint: string, id: string, newName: string, parentId?: string) => {
     if (!newName.trim()) return;
     let payload: any = { title: newName.trim() };
-    if (endpoint.includes('colors') || endpoint.includes('shapes') || endpoint.includes('cuts') || endpoint.includes('clarities')) payload = { name: newName.trim() };
+    if (endpoint.includes('colors') || endpoint.includes('shapes') || endpoint.includes('cuts') || endpoint.includes('clarities') || endpoint.includes('types')) {
+      payload = { name: newName.trim() };
+    }
     if (endpoint.includes('purities')) payload = { value: newName.trim() };
     
     if (parentId && endpoint.includes('subcategories')) {
@@ -261,7 +253,6 @@ const AttributeManager: FC = () => {
     } catch (error) { console.error('Error updating attribute:', error); }
   }, [authToken, fetchData]);
 
-
   const handleDelete = useCallback(async (endpoint: string, id: string) => {
     if (!window.confirm('Are you sure?')) return;
     try {
@@ -271,22 +262,19 @@ const AttributeManager: FC = () => {
     } catch (error) { console.error('Error deleting attribute:', error); }
   }, [authToken, fetchData]);
 
-  // ==================================================================
-  // ========= FIX: Make the getSetter function more specific =========
-  // ==================================================================
   const getSetter = (endpoint: string): React.Dispatch<any> => {
     const settersMap: { [key: string]: React.Dispatch<any> } = {
       '/productAttributes/categories': setCategories,
       '/productAttributes/subcategories': setSubcategories,
       '/metalAttributes/purities': setMetalQualities,
       '/metalAttributes/colors': setMetalColors,
+      '/metalAttributes/types': setMetalTypes, // Added setter for metal types
       '/diamondAttributes/shapes': setDiamondShapes,
       '/diamondAttributes/cuts': setDiamondCuts,
       '/diamondAttributes/clarities': setDiamondClarities,
       '/diamondAttributes/colors': setDiamondTones,
       '/productAttributes/settingStyles': setSettingStyles,
     };
-    // Use the direct mapping. Fallback to a dummy function if no match is found.
     return settersMap[endpoint] || (() => {});
   };
   
@@ -296,6 +284,7 @@ const AttributeManager: FC = () => {
       fetchData('/productAttributes/subcategories', setSubcategories);
       fetchData('/metalAttributes/purities', setMetalQualities);
       fetchData('/metalAttributes/colors', setMetalColors);
+      fetchData('/metalAttributes/types', setMetalTypes); // Fetch metal types
       fetchData('/diamondAttributes/shapes', setDiamondShapes);
       fetchData('/diamondAttributes/cuts', setDiamondCuts);
       fetchData('/diamondAttributes/clarities', setDiamondClarities);
@@ -304,9 +293,7 @@ const AttributeManager: FC = () => {
     }
   }, [authToken, fetchData]);
 
-
   const tabs = [{ id: 'categories', label: 'Categories' }, { id: 'metal', label: 'Metal Attributes' }, { id: 'diamond', label: 'Diamond Attributes' }, { id: 'other', label: 'Other' }];
-
 
   const getSectionContent = () => {
     switch (activeTab) {
@@ -320,6 +307,7 @@ const AttributeManager: FC = () => {
       case 'metal':
         return (
           <div className="space-y-6">
+             <AttributeList title="Metal Types" items={metalTypes} onAdd={(name) => handleAdd('/metalAttributes/types', name)} onEdit={(id, newName) => handleEdit('/metalAttributes/types', id, newName)} onDelete={(id) => handleDelete('/metalAttributes/types', id)} isLoading={loading} />
             <AttributeList title="Metal Qualities" items={metalQualities} onAdd={(name) => handleAdd('/metalAttributes/purities', name)} onEdit={(id, newName) => handleEdit('/metalAttributes/purities', id, newName)} onDelete={(id) => handleDelete('/metalAttributes/purities', id)} isLoading={loading} />
             <AttributeList title="Metal Colors" items={metalColors} onAdd={(name) => handleAdd('/metalAttributes/colors', name)} onEdit={(id, newName) => handleEdit('/metalAttributes/colors', id, newName)} onDelete={(id) => handleDelete('/metalAttributes/colors', id)} isLoading={loading} />
           </div>
@@ -345,7 +333,6 @@ const AttributeManager: FC = () => {
     }
   };
 
-
   return (
     <div className="space-y-6 p-6 bg-gray-100 min-h-screen">
       <div className="flex items-center justify-between">
@@ -366,6 +353,5 @@ const AttributeManager: FC = () => {
     </div>
   );
 };
-
 
 export default AttributeManager;
