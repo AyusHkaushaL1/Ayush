@@ -2079,10 +2079,9 @@ const handleAddProduct = async (isEditing: boolean) => {
             totalWeight: variant.totalWeight || variant.metalGrossWeight || 0,
             price: variant.price,
             SKU: variant.sku,
-            stock: {
-                status: variant.stock > 0 ? "in-stock" : "out-of-stock",
-                quantity: variant.stock,
-            },
+            // INSIDE handleAddProduct -> variants.map()
+// AFTER THE FIX
+stock: variant.stock,
             isActive: true,
             isDefault: index === 0,
             isAvailable: variant.stock > 0,
