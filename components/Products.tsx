@@ -2386,6 +2386,9 @@ stock: variant.stock,
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
+            
+
+            
               {filteredProducts.map((product) => (
                 <tr key={product.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
