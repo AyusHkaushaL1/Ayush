@@ -1134,6 +1134,10 @@ const Products: FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedSubCategory, setSelectedSubCategory] = useState('All');
+  // --- START: NEW STATE FOR FILTERS ---
+  const [filterVisibility, setFilterVisibility] = useState('all'); // For statuses like Active, Out of Stock
+  const [filterIsActive, setFilterIsActive] = useState('all'); // For a general active/inactive flag
+  // --- END: NEW STATE FOR FILTERS ---
   const [showAddModal, setShowAddModal] = useState(false);
   const [activeTab, setActiveTab] = useState('basic');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
@@ -1372,7 +1376,7 @@ const Products: FC = () => {
     }
   }, []);
 
-// REPLACE your fetchProducts function with this FINAL, FUTURE-PROOF version
+// REPLACE your current fetchProducts function with this corrected version
 
 const fetchProducts = useCallback(async () => {
     if (!authToken) {
@@ -1388,78 +1392,97 @@ const fetchProducts = useCallback(async () => {
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
-      const data: ProductApiResponse = await response.json();
+      // Note: The 'ProductApiResponse' type should be updated to match the detailed JSON structure
+      const data: any = await response.json(); 
 
-      const transformedProducts: JewelryProduct[] = data.products.map((apiProduct) => {
+      const transformedProducts: JewelryProduct[] = data.products.map((apiProduct: any) => {
         const mainVariant = apiProduct.variants[0];
 
-        const variants: Variant[] = apiProduct.variants.map((v: ApiVariant) => ({
-            id: v._id,
-            sku: v.SKU,
-            // --- THIS IS THE CORRECTED LOGIC ---
-            // It will read the stock number when the backend adds it.
-            // If it's missing or null, it safely defaults to 0, preventing errors.
-            stock: v.stock ?? 0,
-            // --- END OF CORRECTION ---
-            metalType: '',
-            metalQuality: v.metalConfig.purityId.value,
-            diamondQuality: v.diamondConfigs[0]?.diamond.clarity || '',
-            price: v.priceBreakdown?.total || 0,
-            totalWeight: 0,
-            metalColor: v.metalConfig.colorId.name,
-            diamondTone: v.diamondConfigs[0]?.diamond.color || '',
-            diamondWeight: 0,
-            shape: v.diamondConfigs[0]?.diamond.shape || '',
-            settingType: '',
-            metalGrossWeight: 0,
-            totalDiamonds: v.diamondConfigs.reduce((sum, dc) => sum + dc.quantity, 0),
-            bandWidth: 0,
-            stoneClarity: v.diamondConfigs[0]?.diamond.clarity || '',
-            stoneCut: v.diamondConfigs[0]?.diamond.cut || '',
-            sideStones: '',
-            media: [],
-            diamondOptions: [],
+        // Helper function to calculate total carat weight for any variant
+        const calculateTotalCarat = (configs: any[]) => {
+          if (!configs || !Array.isArray(configs)) return 0;
+          return configs.reduce((sum, dc) => {
+            const weight = dc.diamond?.caratWeightId?.value || 0;
+            const quantity = dc.quantity || 1;
+            return sum + (weight * quantity);
+          }, 0);
+        };
+
+        const variants: Variant[] = apiProduct.variants.map((v: any): Variant => ({
+          id: v._id,
+          sku: v.SKU,
+          stock: v.stock ?? 0,
+          // INSIDE the variants.map((v: any): Variant => ({ ... })) block
+
+// ... other properties
+price: (v.priceBreakdown?.total?.afterDiscount != null && v.priceBreakdown.total.afterDiscount >= 0) 
+         ? v.priceBreakdown.total.afterDiscount 
+         : (v.price || 0),
+metalType: v.metalConfig?.typeId?.name || '',
+// ... other properties
+          metalQuality: v.metalConfig?.purityId?.value || '',
+          metalColor: v.metalConfig?.colorId?.name || '',
+          diamondTone: v.diamondConfigs?.[0]?.diamond?.colorId?.name || '',
+          diamondWeight: calculateTotalCarat(v.diamondConfigs), // Variant-specific carat weight
+          shape: v.diamondConfigs?.[0]?.diamond?.shapeId?.name || '',
+          settingType: apiProduct.settingStyle?.title || '',
+          metalGrossWeight: v.totalWeight || 0, // Variant-specific total weight
+          totalWeight: v.totalWeight || 0,
+          totalDiamonds: v.diamondConfigs.reduce((sum: number, dc: any) => sum + (dc.quantity || 0), 0),
+          bandWidth: apiProduct.dimensions?.width || 0, // From parent product
+          stoneClarity: v.diamondConfigs?.[0]?.diamond?.clarityId?.name || '',
+          stoneCut: v.diamondConfigs?.[0]?.diamond?.cutId?.name || '',
+          sideStones: '', // No direct mapping, can be enhanced later
+          media: [], // Intended for frontend state (file uploads)
+          diamondOptions: [], // Intended for frontend state
+          diamondQuality: v.diamondConfigs?.[0]?.diamond?.clarityId?.name || '', // Legacy field
         }));
 
         const totalStock = variants.reduce((sum, v) => sum + (v.stock || 0), 0);
+        
+        // Find specific certifications from the array
+        const diamondCert = apiProduct.certifications?.find((c: any) => ['IGI', 'GIA'].includes(c.authority))?.authority || '';
+        const goldCert = apiProduct.certifications?.find((c: any) => c.authority === 'BIS')?.authority || '';
 
         return {
-          id: apiProduct._id,
+          id: apiProduct.id,
           name: apiProduct.title,
-          status: totalStock > 0 ? 'Active' : 'Out of Stock',
-          variants: variants,
-          media: [],
+          media: [], // For local file management
           images: apiProduct.media.coverImages,
+          // --- START OF CORRECTIONS ---
+          category: apiProduct.category?.title || 'N/A',
+          subCategory: apiProduct.subCategory?.title || 'N/A', // Handles null subCategory
+          collection: apiProduct.collection?.title || '',
+          metalGrossWeight: mainVariant?.totalWeight || 0, // Using main variant's total weight
+          diamondWeight: calculateTotalCarat(mainVariant?.diamondConfigs), // Main variant's total carat weight
+          bandWidth: apiProduct.dimensions?.width || 0, // From top-level dimensions
+          // --- END OF CORRECTIONS ---
           metalQuality: mainVariant?.metalConfig?.purityId?.value || '',
           metalColor: mainVariant?.metalConfig?.colorId?.name || '',
-          diamondQuality: mainVariant?.diamondConfigs?.[0]?.diamond?.clarity || '',
-          diamondTone: mainVariant?.diamondConfigs?.[0]?.diamond?.color || '',
-          diamondOptions: [],
-          sizes: [],
-          metalGrossWeight: 0,
-          diamondWeight: 0,
-          shape: mainVariant?.diamondConfigs?.[0]?.diamond?.shape || '',
-          category: 'Rings',
-          subCategory: 'Engagement Rings',
-          description: '',
-          diamondCertification: mainVariant?.diamondConfigs?.[0]?.diamond?.certification?.authority || '',
-          goldCertification: mainVariant?.metalConfig?.certification?.authority || '',
-          sideStones: '',
-          rating: 0,
-          customizable: false,
-          createdAt: new Date().toISOString().split('T')[0],
-          occasion: '',
-          gender: '',
-          collection: '',
-          stoneClarity: mainVariant?.diamondConfigs?.[0]?.diamond?.clarity || '',
-          stoneColor: mainVariant?.diamondConfigs?.[0]?.diamond?.color || '',
-          stoneCut: mainVariant?.diamondConfigs?.[0]?.diamond?.cut || '',
-          settingType: '',
-          bandWidth: 0,
-          totalDiamonds: mainVariant?.diamondConfigs?.reduce((sum, config) => sum + config.quantity, 0) || 0,
-          warranty: '',
-          returnPolicy: '',
-          tags: [],
+          diamondQuality: mainVariant?.diamondConfigs?.[0]?.diamond?.clarityId?.name || '',
+          diamondTone: mainVariant?.diamondConfigs?.[0]?.diamond?.colorId?.name || '',
+          diamondOptions: [], // For local state
+          sizes: apiProduct.size || [],
+          shape: mainVariant?.diamondConfigs?.[0]?.diamond?.shapeId?.name || '',
+          variants: variants,
+          description: apiProduct.description || '',
+          diamondCertification: diamondCert,
+          goldCertification: goldCert,
+          sideStones: '', // No direct mapping
+          status: totalStock > 0 ? 'Active' : 'Out of Stock',
+          rating: apiProduct.averageRating || 0,
+          customizable: apiProduct.isCustomizable || false,
+          createdAt: apiProduct.createdAt,
+          occasion: '', // No direct mapping from provided API response
+          gender: apiProduct.gender || 'unisex',
+          stoneClarity: mainVariant?.diamondConfigs?.[0]?.diamond?.clarityId?.name || '',
+          stoneColor: mainVariant?.diamondConfigs?.[0]?.diamond?.colorId?.name || '',
+          stoneCut: mainVariant?.diamondConfigs?.[0]?.diamond?.cutId?.name || '',
+          settingType: apiProduct.settingStyle?.title || '',
+          totalDiamonds: mainVariant?.diamondConfigs?.reduce((sum: number, config: any) => sum + (config.quantity || 0), 0) || 0,
+          warranty: apiProduct.warranty?.details || '',
+          returnPolicy: apiProduct.returnPolicy?.details || '',
+          tags: apiProduct.seo?.tags || [],
         };
       });
       setProducts(transformedProducts);
@@ -1874,6 +1897,18 @@ const fetchProducts = useCallback(async () => {
     fetchSubcategories(newProduct.category || '');
   }, [newProduct.category, fetchSubcategories]);
 
+// --- START: ADD THIS NEW useEffect HOOK ---
+  // This hook watches the FILTER's category dropdown
+  useEffect(() => {
+    // Only fetch if a specific category is selected
+    if (selectedCategory && selectedCategory !== 'All') {
+      fetchSubcategories(selectedCategory);
+    } else {
+      // If "All Categories" is selected, clear the subcategories
+      setApiSubcategories([]);
+    }
+  }, [selectedCategory, fetchSubcategories]); // Dependencies
+  // --- END: ADD THIS NEW useEffect HOOK ---
 
   const initialSizeMasterList: SizeMasterList = {
     'All': [],
@@ -1924,14 +1959,30 @@ const fetchProducts = useCallback(async () => {
     return [...(baseOptions[optionType] || []), ...(customOptions[optionType] || [])];
   }, [apiMetalTypes,apiMetalQualities, apiMetalColors, diamondQualities, diamondTones, shapes, occasions, genders, settingTypes, stoneCuts, customOptions]);
 
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (product.variants[0] && product.variants[0].sku.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      product.shape.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
-    const matchesSubCategory = selectedSubCategory === 'All' || product.subCategory === selectedSubCategory;
-    return matchesSearch && matchesCategory && matchesSubCategory;
-  });
+  // --- START: UPDATED FILTERING LOGIC ---
+  const filteredProducts = products.filter(product => {
+    // Search term filter (existing)
+    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (product.variants[0] && product.variants[0].sku.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      product.shape.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // Category filters (existing)
+    const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
+    const matchesSubCategory = selectedSubCategory === 'All' || product.subCategory === selectedSubCategory;
+
+    // NEW: Visibility filter
+    // This uses the `status` field you already calculate ('Active', 'Out of Stock', etc.)
+    const matchesVisibility = filterVisibility === 'all' || product.status === filterVisibility;
+    
+    // NEW: isActive filter
+    // We can infer 'active' from the status. If status is 'Active' or 'Low Stock', it's active.
+    const isActive = product.status === 'Active' || product.status === 'Low Stock';
+    const matchesIsActive = filterIsActive === 'all' || (filterIsActive === 'active' && isActive) || (filterIsActive === 'inactive' && !isActive);
+
+    // Return true only if ALL conditions are met
+    return matchesSearch && matchesCategory && matchesSubCategory && matchesVisibility && matchesIsActive;
+  });
+  // --- END: UPDATED FILTERING LOGIC ---
 
   const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
@@ -1958,8 +2009,8 @@ const fetchProducts = useCallback(async () => {
 
 // PASTE THIS ENTIRE NEW FUNCTION INTO YOUR `Products` COMPONENT
 
+
 const handleUpdateProduct = async () => {
-    // Ensure we have the original product state to compare against
     if (!editingProduct || !newProduct) {
         alert("Error: Cannot update product without original data.");
         return;
@@ -1970,16 +2021,35 @@ const handleUpdateProduct = async () => {
     // --- PART 1: Handle Product-Level Details ---
     const productDetailsPayload: { [key: string]: any } = {};
 
+    // Compare all editable product-level fields
     if (editingProduct.name !== newProduct.name) {
         productDetailsPayload.title = newProduct.name;
     }
     if (editingProduct.description !== newProduct.description) {
         productDetailsPayload.description = newProduct.description;
     }
-    // Add other product-level fields to compare here (e.g., category, collection, etc.)
-    // if (editingProduct.category !== newProduct.category) { ... }
+    if (editingProduct.collection !== newProduct.collection) {
+        // NOTE: The API might expect a 'collectionId' instead of a string name.
+        // This example assumes it can take the name directly for simplicity.
+        productDetailsPayload.collection = newProduct.collection;
+    }
+    if (editingProduct.gender !== newProduct.gender) {
+        productDetailsPayload.gender = newProduct.gender;
+    }
+    if (editingProduct.occasion !== newProduct.occasion) {
+        productDetailsPayload.occasion = newProduct.occasion;
+    }
+    if (editingProduct.customizable !== newProduct.customizable) {
+        productDetailsPayload.isCustomizable = newProduct.customizable;
+    }
+    if (JSON.stringify(editingProduct.tags) !== JSON.stringify(newProduct.tags)) {
+        productDetailsPayload.tags = newProduct.tags;
+    }
+     if (editingProduct.stoneColor !== newProduct.stoneColor) {
+        productDetailsPayload.stoneColor = newProduct.stoneColor;
+    }
 
-    // If product-level details changed, create a PATCH request for the main product
+    // If product-level details changed, create a PATCH request
     if (Object.keys(productDetailsPayload).length > 0) {
         console.log("Product-level changes detected:", productDetailsPayload);
         const productUpdateUrl = `http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/products/${editingProduct.id}`;
@@ -1995,7 +2065,6 @@ const handleUpdateProduct = async () => {
         updatePromises.push(productUpdatePromise);
     }
 
-
     // --- PART 2: Handle Variant-Level Details ---
     newProduct.variants?.forEach(editedVariant => {
         const originalVariant = editingProduct.variants?.find(v => v.id === editedVariant.id);
@@ -2003,22 +2072,33 @@ const handleUpdateProduct = async () => {
         if (originalVariant) { // This variant existed before, check for changes
             const variantPayload: { [key: string]: any } = {};
 
-            // Compare each field and add to payload if it changed
-            if (originalVariant.sku !== editedVariant.sku) {
-                variantPayload.SKU = editedVariant.sku;
-            }
-            if (originalVariant.price !== editedVariant.price) {
-                variantPayload.price = editedVariant.price;
-            }
-            // AFTER THE FIX:
-if (originalVariant.stock !== editedVariant.stock) {
-    variantPayload.stock = editedVariant.stock; // Send the number directly
-}
-            // Add other variant-specific fields here to compare...
+            // Compare ALL editable variant fields
+            if (originalVariant.sku !== editedVariant.sku) variantPayload.SKU = editedVariant.sku;
+            if (originalVariant.price !== editedVariant.price) variantPayload.price = editedVariant.price;
+            if (originalVariant.stock !== editedVariant.stock) variantPayload.stock = editedVariant.stock;
+            if (originalVariant.metalType !== editedVariant.metalType) variantPayload.metalType = editedVariant.metalType;
+            if (originalVariant.metalQuality !== editedVariant.metalQuality) variantPayload.metalQuality = editedVariant.metalQuality;
+            if (originalVariant.metalColor !== editedVariant.metalColor) variantPayload.metalColor = editedVariant.metalColor;
+            if (originalVariant.diamondTone !== editedVariant.diamondTone) variantPayload.diamondTone = editedVariant.diamondTone;
+            if (originalVariant.diamondWeight !== editedVariant.diamondWeight) variantPayload.diamondWeight = editedVariant.diamondWeight;
+            if (originalVariant.shape !== editedVariant.shape) variantPayload.shape = editedVariant.shape;
+            if (originalVariant.settingType !== editedVariant.settingType) variantPayload.settingType = editedVariant.settingType;
+            if (originalVariant.metalGrossWeight !== editedVariant.metalGrossWeight) variantPayload.metalGrossWeight = editedVariant.metalGrossWeight;
+            if (originalVariant.totalDiamonds !== editedVariant.totalDiamonds) variantPayload.totalDiamonds = editedVariant.totalDiamonds;
+            if (originalVariant.bandWidth !== editedVariant.bandWidth) variantPayload.bandWidth = editedVariant.bandWidth;
+            if (originalVariant.stoneClarity !== editedVariant.stoneClarity) variantPayload.stoneClarity = editedVariant.stoneClarity;
+            if (originalVariant.stoneCut !== editedVariant.stoneCut) variantPayload.stoneCut = editedVariant.stoneCut;
+            if (originalVariant.sideStones !== editedVariant.sideStones) variantPayload.sideStones = editedVariant.sideStones;
+            
+            // NOTE: This logic doesn't detect changes in diamondOptions yet. That would require a more complex comparison.
 
-            // If any field changed, create a PATCH request for this specific variant
             if (Object.keys(variantPayload).length > 0) {
                 console.log(`Changes detected for variant SKU ${originalVariant.sku}. Payload:`, variantPayload);
+                
+                // IMPORTANT: Your API might require IDs instead of string names for fields like metalColor, shape, etc.
+                // The payload below sends the string name. You may need to adjust this to send an ID if the API update fails.
+                // For example, instead of `metalColor: "Yellow Gold"`, you might need to find the ID and send `metalColorId: "some-id"`.
+
                 const variantUpdateUrl = `http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/inventory/products/variants/${editedVariant.id}`;
                 
                 const variantUpdatePromise = fetch(variantUpdateUrl, {
@@ -2032,9 +2112,8 @@ if (originalVariant.stock !== editedVariant.stock) {
                 updatePromises.push(variantUpdatePromise);
             }
         }
-        // NOTE: This logic only handles UPDATING existing variants.
-        // A full implementation would also need to handle creating new variants (POST)
-        // and deleting removed variants (DELETE).
+        // This logic only handles UPDATING existing variants.
+        // A full implementation would also need to handle creating new variants (POST) and deleting removed ones (DELETE).
     });
 
     // --- PART 3: Execute all API Calls ---
@@ -2049,8 +2128,10 @@ if (originalVariant.stock !== editedVariant.stock) {
         const failedResponses = responses.filter(res => !res.ok);
 
         if (failedResponses.length > 0) {
-            const errorData = await failedResponses[0].json();
-            throw new Error(`Failed to update. First error: ${errorData.message || 'Unknown error'}`);
+            // Attempt to read error message from the first failed API call
+            const errorText = await failedResponses[0].text();
+            console.error("API Update Error:", errorText);
+            throw new Error(`Failed to update. Server responded with: ${errorText}`);
         }
 
         alert('Product updated successfully!');
@@ -2061,7 +2142,7 @@ if (originalVariant.stock !== editedVariant.stock) {
 
     } catch (error) {
         console.error("Error during product update:", error);
-        alert(`Failed to update product. See console for details.`);
+        alert(`Failed to update product. Please check the console for more details.`);
     }
 };
 
@@ -2351,7 +2432,16 @@ stock: variant.stock,
     return <div className="text-center py-10 text-red-600">Error: {error}</div>;
   }
 
+const handleClearFilters = () => {
+    setSearchTerm('');
+    setSelectedCategory('All');
+    setSelectedSubCategory('All');
+    setFilterVisibility('all');
+    setFilterIsActive('all');
+  };
+
   return (
+    
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Jewelry Products</h1>
@@ -2369,6 +2459,70 @@ stock: variant.stock,
             <span>Add Jewelry Product</span>
           </button>
         </div>
+        {/* --- NEW FILTER BAR --- */}
+      <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* Search Input */}
+            <div className="lg:col-span-2">
+                <label htmlFor="search-product" className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Search className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                        type="text"
+                        id="search-product"
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-amber-500 focus:border-amber-500"
+                        placeholder="Search by name, SKU..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+            </div>
+
+            {/* Category Filter */}
+            <div>
+                <label htmlFor="filter-category" className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <select id="filter-category" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    <option value="All">All Categories</option>
+                    {apiCategories.map(cat => <option key={cat.id} value={cat.title}>{cat.title}</option>)}
+                </select>
+            </div>
+
+            {/* SubCategory Filter */}
+            <div>
+                <label htmlFor="filter-subcategory" className="block text-sm font-medium text-gray-700 mb-1">Subcategory</label>
+                <select id="filter-subcategory" value={selectedSubCategory} onChange={(e) => setSelectedSubCategory(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg" disabled={selectedCategory === 'All'}>
+                    <option value="All">All Subcategories</option>
+                    {/* --- THIS IS THE CORRECTED LINE --- */}
+                    {apiSubcategories.map(sub => (
+                        <option key={sub.id} value={sub.title}>{sub.title}</option>
+                    ))}
+                </select>
+            </div>
+            
+            {/* Visibility Filter */}
+            <div>
+                <label htmlFor="filter-visibility" className="block text-sm font-medium text-gray-700 mb-1">Visibility</label>
+                <select id="filter-visibility" value={filterVisibility} onChange={(e) => setFilterVisibility(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    <option value="all">All Visibilities</option>
+                    <option value="Active">Active</option>
+                    <option value="Low Stock">Low Stock</option>
+                    <option value="Out of Stock">Out of Stock</option>
+                </select>
+            </div>
+        </div>
+        <div className="mt-4 flex justify-end">
+            <button
+                onClick={handleClearFilters}
+                className="text-sm text-gray-600 hover:text-gray-900 font-medium flex items-center space-x-1"
+            >
+                <X className="h-4 w-4" />
+                <span>Clear Filters</span>
+            </button>
+        </div>
+      </div>
+    {/* --- END OF NEW FILTER BAR & REPLACEMENT SECTION --- */}
       </div>
       
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">

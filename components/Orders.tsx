@@ -1,21 +1,103 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, Truck, Package, CheckCircle, Plus, Check, X, Edit3 } from 'lucide-react';
+import { Search, Filter, Truck, Package, CheckCircle, Plus, Check, X, Edit3, ChevronDown } from 'lucide-react';
 
-// Interface for the simplified order list view
-interface Order {
-  id: string;
-  customer: string;
-  email: string;
-  date: string;
-  total: number;
-  status: string;
-  items: number;
-  paymentMethod: string;
+// --- UPDATED INTERFACES ---
+
+// Interfaces for the detailed order view
+interface IShippingAddress {
+  fullName: string;
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  phone: string;
 }
+
+interface IPaymentInfo {
+  method: string;
+  transactionId: string;
+  status: string;
+}
+
+interface IOrderItem {
+  engraving?: { text: string };
+  product: string; // Product ID
+  variant: string; // Variant ID
+  quantity: number;
+  price: number;
+}
+
+// Updated Order interface to hold all details from the API
+interface Order {
+  id: string;
+  customer: string;
+  email: string;
+  date: string;
+  total: number;
+  status: string;
+  items: IOrderItem[];
+  paymentMethod: string;
+  shippingAddress: IShippingAddress;
+  paymentInfo: IPaymentInfo;
+}
+
+// --- NEW COMPONENT FOR ORDER DETAILS ---
+
+const OrderDetailsView: React.FC<{ order: Order }> = ({ order }) => {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 bg-white rounded-lg border">
+      {/* Shipping Address */}
+      <div className="space-y-2">
+        <h3 className="font-semibold text-gray-800 border-b pb-2 mb-2">Shipping Address</h3>
+        <p className="text-sm text-gray-600"><strong>{order.shippingAddress.fullName}</strong></p>
+        <p className="text-sm text-gray-600">{order.shippingAddress.addressLine1}</p>
+        {order.shippingAddress.addressLine2 && <p className="text-sm text-gray-600">{order.shippingAddress.addressLine2}</p>}
+        <p className="text-sm text-gray-600">{order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalCode}</p>
+        <p className="text-sm text-gray-600">{order.shippingAddress.country}</p>
+        <p className="text-sm text-gray-600">Phone: {order.shippingAddress.phone}</p>
+      </div>
+      
+      {/* Payment Info */}
+      <div className="space-y-2">
+        <h3 className="font-semibold text-gray-800 border-b pb-2 mb-2">Payment Information</h3>
+        <p className="text-sm text-gray-600"><strong>Method:</strong> {order.paymentInfo.method}</p>
+        <p className="text-sm text-gray-600"><strong>Status:</strong> <span className="capitalize px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">{order.paymentInfo.status}</span></p>
+        <p className="text-sm text-gray-600"><strong>Transaction ID:</strong></p>
+        <p className="text-xs text-gray-500 break-all">{order.paymentInfo.transactionId}</p>
+      </div>
+
+      {/* Items */}
+      <div className="space-y-4">
+        <h3 className="font-semibold text-gray-800 border-b pb-2 mb-2">Items Ordered ({order.items.length})</h3>
+        {order.items.map((item, index) => (
+          <div key={index} className="text-sm text-gray-600 border-b last:border-b-0 pb-2">
+            <p><strong>Product ID:</strong> <span className="text-xs">{item.product}</span></p>
+            <p><strong>Variant ID:</strong> <span className="text-xs">{item.variant}</span></p>
+            <p><strong>Quantity:</strong> {item.quantity}</p>
+            <p><strong>Price:</strong> ₹{item.price.toLocaleString('en-IN')}</p>
+            {item.engraving?.text && (
+              <p className="mt-1 p-2 bg-amber-50 border border-amber-200 rounded">
+                <strong>Engraving:</strong> "{item.engraving.text}"
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+
+// --- MAIN ORDERS COMPONENT ---
 
 const Orders: React.FC = () => {
   const [authToken, setAuthToken] = useState<string>('');
   
+  // State for expandable rows
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [availableStatuses, setAvailableStatuses] = useState<string[]>([]);
@@ -27,8 +109,10 @@ const Orders: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
 
-  const apiListUrl = '/api/admin/orders';
-  const apiStatusUpdateUrl = (orderId: string) => `/api/admin/orders/${orderId}/status`;
+  // --- UPDATED API URLS ---
+  const apiBaseUrl = 'http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io';
+  const apiListUrl = `${apiBaseUrl}/api/admin/orders`;
+  const apiStatusUpdateUrl = (orderId: string) => `${apiBaseUrl}/api/admin/orders/${orderId}/status`;
 
   const fetchOrders = useCallback(async () => {
     if (!authToken) {
@@ -54,6 +138,7 @@ const Orders: React.FC = () => {
       
       const responseData = await response.json();
       
+      // --- UPDATED MAPPING TO CAPTURE ALL DETAILS ---
       const ordersArray: Order[] = responseData.orders.map((apiOrder: any) => ({
         id: apiOrder._id,
         customer: apiOrder.user?.name || 'N/A',
@@ -61,8 +146,10 @@ const Orders: React.FC = () => {
         date: apiOrder.placedAt,
         total: apiOrder.totalAmount,
         status: apiOrder.status,
-        items: apiOrder.items?.length || 0,
-        paymentMethod: apiOrder.paymentInfo?.method || 'N/A'
+        items: apiOrder.items || [],
+        paymentMethod: apiOrder.paymentInfo?.method || 'N/A',
+        shippingAddress: apiOrder.shippingAddress || {},
+        paymentInfo: apiOrder.paymentInfo || {},
       }));
 
       if (!Array.isArray(ordersArray)) {
@@ -217,47 +304,33 @@ const Orders: React.FC = () => {
             }}
             autoFocus
           />
-          <button
-            onClick={() => addNewStatus(order.id, newStatusInput)}
-            className="p-1 text-green-600 hover:text-green-700"
-          >
-            <Check className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => {
-              setIsAddingNewStatus(null);
-              setNewStatusInput('');
-            }}
-            className="p-1 text-red-600 hover:text-red-700"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <button onClick={() => addNewStatus(order.id, newStatusInput)} className="p-1 text-green-600 hover:text-green-700"><Check className="h-4 w-4" /></button>
+          <button onClick={() => { setIsAddingNewStatus(null); setNewStatusInput(''); }} className="p-1 text-red-600 hover:text-red-700"><X className="h-4 w-4" /></button>
         </div>
       );
     }
 
     if (isEditing) {
+      // Create a unique list of statuses for the dropdown
+      const selectableStatuses = Array.from(new Set([...availableStatuses, 'placed', 'shipped', 'delivered', 'cancelled', 'returned']));
+
       return (
-  <select
-    value={order.status}
-    onChange={(e) => updateOrderStatusOnApi(order.id, e.target.value)}
-    className="px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-  >
-    <option value="placed">Placed</option>
-    <option value="shipped">Shipped</option>
-    <option value="delivered">Delivered</option>
-    <option value="cancelled">Cancelled</option>
-    <option value="returned">Returned</option>
-  </select>
-);
+        <select
+          value={order.status}
+          onChange={(e) => updateOrderStatusOnApi(order.id, e.target.value)}
+          onBlur={() => setEditingStatus(null)}
+          className="px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+          autoFocus
+        >
+          {selectableStatuses.map(status => (
+            <option key={status} value={status} className="capitalize">{status}</option>
+          ))}
+        </select>
+      );
     }
     
     if (isUpdating) {
-        return (
-            <div className="flex items-center">
-                <span className="animate-pulse text-gray-500">Updating...</span>
-            </div>
-        );
+        return <div className="flex items-center"><span className="animate-pulse text-gray-500">Updating...</span></div>;
     }
 
     return (
@@ -271,149 +344,94 @@ const Orders: React.FC = () => {
           <Edit3 className="h-3 w-3 ml-2 opacity-0 group-hover:opacity-70 transition-opacity duration-200" />
         </button>
         <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-          <div className="bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-            Click to edit status
-          </div>
+          <div className="bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap">Click to edit status</div>
         </div>
       </div>
     );
   };
 
   if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="text-xl text-gray-500">Loading orders...</div>
-      </div>
-    );
+    return <div className="flex justify-center items-center h-screen"><div className="text-xl text-gray-500">Loading orders...</div></div>;
   }
 
   if (error) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="text-xl text-red-500">{error}</div>
-      </div>
-    );
+    return <div className="flex justify-center items-center h-screen"><div className="text-xl text-red-500">{error}</div></div>;
   }
 
   return (
     <div className="space-y-6">
-{/*       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
-      </div> */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
+      </div>
 
-{/* Page Header */}
-<div className="flex items-center justify-between">
-  <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
-</div>
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200"><div className="flex items-center justify-between"><div><p className="text-sm font-medium text-gray-600">Total Orders</p><p className="text-2xl font-bold text-gray-900">{counts.total}</p></div><div className="bg-blue-100 p-3 rounded-full"><Package className="h-6 w-6 text-blue-600" /></div></div></div>
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200"><div className="flex items-center justify-between"><div><p className="text-sm font-medium text-gray-600">Pending</p><p className="text-2xl font-bold text-gray-900">{counts.pending}</p></div><div className="bg-yellow-100 p-3 rounded-full"><Package className="h-6 w-6 text-yellow-600" /></div></div></div>
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200"><div className="flex items-center justify-between"><div><p className="text-sm font-medium text-gray-600">Processing</p><p className="text-2xl font-bold text-gray-900">{counts.processing}</p></div><div className="bg-blue-100 p-3 rounded-full"><Package className="h-6 w-6 text-blue-600" /></div></div></div>
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200"><div className="flex items-center justify-between"><div><p className="text-sm font-medium text-gray-600">Shipped</p><p className="text-2xl font-bold text-gray-900">{counts.shipped}</p></div><div className="bg-purple-100 p-3 rounded-full"><Truck className="h-6 w-6 text-purple-600" /></div></div></div>
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200"><div className="flex items-center justify-between"><div><p className="text-sm font-medium text-gray-600">Delivered</p><p className="text-2xl font-bold text-gray-900">{counts.delivered}</p></div><div className="bg-green-100 p-3 rounded-full"><CheckCircle className="h-6 w-6 text-green-600" /></div></div></div>
+      </div>
 
-{/* Order Stats */}
-<div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-  <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-sm font-medium text-gray-600">Total Orders</p>
-        <p className="text-2xl font-bold text-gray-900">{counts.total}</p>
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+          <div className="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
+            <div className="relative"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" /><input type="text" placeholder="Search orders..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent w-full sm:w-64"/></div>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent w-full sm:w-auto">
+              {allStatuses.map(status => (<option key={status} value={status}>{status}</option>))}
+            </select>
+          </div>
+          <div className="flex items-center space-x-2"><Filter className="h-5 w-5 text-gray-400" /><span className="text-sm text-gray-600">Showing {filteredOrders.length} of {orders.length} orders</span></div>
+        </div>
       </div>
-      <div className="bg-blue-100 p-3 rounded-full">
-        <Package className="h-6 w-6 text-blue-600" />
-      </div>
-    </div>
-  </div>
-  
-  <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-sm font-medium text-gray-600">Pending</p>
-        <p className="text-2xl font-bold text-gray-900">{counts.pending}</p>
-      </div>
-      <div className="bg-yellow-100 p-3 rounded-full">
-        <Package className="h-6 w-6 text-yellow-600" />
-      </div>
-    </div>
-  </div>
-  
-  <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-sm font-medium text-gray-600">Processing</p>
-        <p className="text-2xl font-bold text-gray-900">{counts.processing}</p>
-      </div>
-      <div className="bg-blue-100 p-3 rounded-full">
-        <Package className="h-6 w-6 text-blue-600" />
-      </div>
-    </div>
-  </div>
-  
-  <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-sm font-medium text-gray-600">Shipped</p>
-        <p className="text-2xl font-bold text-gray-900">{counts.shipped}</p>
-      </div>
-      <div className="bg-purple-100 p-3 rounded-full">
-        <Truck className="h-6 w-6 text-purple-600" />
-      </div>
-    </div>
-  </div>
-  
-  <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-sm font-medium text-gray-600">Delivered</p>
-        <p className="text-2xl font-bold text-gray-900">{counts.delivered}</p>
-      </div>
-      <div className="bg-green-100 p-3 rounded-full">
-        <CheckCircle className="h-6 w-6 text-green-600" />
-      </div>
-    </div>
-  </div>
-</div>
 
-
-{/* Filters */}
-<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-    <div className="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-        <input
-          type="text"
-          placeholder="Search orders..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent w-full sm:w-64"
-        />
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <div className="flex items-center space-x-1"><span>Status</span><Edit3 className="h-3 w-3 text-gray-400" /><span className="text-xs normal-case text-gray-400">(Click to edit)</span></div>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredOrders.map((order) => (
+                <React.Fragment key={order.id}>
+                  <tr className="hover:bg-gray-50 cursor-pointer" onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center text-sm font-medium text-gray-900">
+                        {order.id}
+                        <ChevronDown className={`h-5 w-5 text-gray-400 ml-2 transform transition-transform duration-200 ${expandedOrderId === order.id ? 'rotate-180' : ''}`} />
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm font-medium text-gray-900">{order.customer}</div><div className="text-sm text-gray-500">{order.email}</div></td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{new Date(order.date).toLocaleDateString('en-IN')}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order.items.length}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₹{order.total.toLocaleString('en-IN')}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order.paymentMethod}</td>
+                    <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <StatusDropdown order={order} />
+                    </td>
+                  </tr>
+                  {expandedOrderId === order.id && (
+                    <tr>
+                      <td colSpan={7} className="p-4 bg-gray-50 transition-all duration-300">
+                        <OrderDetailsView order={order} />
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-      
-      <select
-        value={statusFilter}
-        onChange={(e) => setStatusFilter(e.target.value)}
-        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent w-full sm:w-auto"
-      >
-        {allStatuses.map(status => (
-          <option key={status} value={status}>{status}</option>
-        ))}
-      </select>
-    </div>
-
-    <div className="flex items-center space-x-2">
-      <Filter className="h-5 w-5 text-gray-400" />
-      <span className="text-sm text-gray-600">
-        Showing {filteredOrders.length} of {orders.length} orders
-      </span>
-    </div>
-  </div>
-</div>
-
-
-{/* Orders Table */}
-<div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-  <div className="overflow-x-auto">
-    {/* prettier-ignore */}
-    <table className="min-w-full divide-y divide-gray-200"><thead className="bg-gray-50"><tr><th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th><th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th><th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th><th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th><th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th><th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th><th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><div className="flex items-center space-x-1"><span>Status</span><Edit3 className="h-3 w-3 text-gray-400" /><span className="text-xs normal-case text-gray-400">(Click to edit)</span></div></th></tr></thead><tbody className="bg-white divide-y divide-gray-200">{filteredOrders.map((order) => (<tr key={order.id} className="hover:bg-gray-50"><td className="px-6 py-4 whitespace-nowrap"><div className="text-sm font-medium text-gray-900">{order.id}</div></td><td className="px-6 py-4 whitespace-nowrap"><div className="text-sm font-medium text-gray-900">{order.customer}</div><div className="text-sm text-gray-500">{order.email}</div></td><td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{new Date(order.date).toLocaleDateString('en-IN')}</td><td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order.items}</td><td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₹{order.total.toLocaleString('en-IN')}</td><td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order.paymentMethod}</td><td className="px-6 py-4 whitespace-nowrap"><StatusDropdown order={order} /></td></tr>))}</tbody></table>
-  </div>
-</div>
-
     </div>
   );
 };
