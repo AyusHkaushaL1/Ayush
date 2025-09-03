@@ -7,7 +7,9 @@ import {
   Warehouse,
   Gem,
   X,
-  Ruler 
+  Ruler,
+  BarChart2,
+  ShieldCheck 
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -23,14 +25,19 @@ const Sidebar: React.FC<SidebarProps> = ({
   sidebarOpen, 
   setSidebarOpen 
 }) => {
-  const menuItems = [
+  // Make sure to import the new icon
+// import { /* other icons... */ Package, ShoppingCart, BarChart2, Ruler, Users, ShieldCheck } from 'lucide-react';
+
+const menuItems = [
     // { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'products', label: 'Products', icon: Package },
     { id: 'orders', label: 'Orders', icon: ShoppingCart },
+    { id: 'analytics', label: 'Analytics', icon: BarChart2 },
     // { id: 'inventory', label: 'Inventory', icon: Warehouse },
     { id: 'attributes', label: 'Attributes', icon: Ruler },
-    { id: 'user', label: 'User Login', icon: Users },
-  ];
+    { id: 'management', label: 'User Management', icon: ShieldCheck }, // The new page you created
+    { id: 'user', label: 'User Login', icon: Users },       // Your original login page
+];
 
   return (
     <>

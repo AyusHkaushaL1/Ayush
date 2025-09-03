@@ -11,6 +11,8 @@ import Inventory from '@/components/Inventory';
  import Settings from '@/components/Settings';
 import Login from '@/components/Login';     
 import AttributeManager from '@/components/AttributeManager';
+import AnalyticsPage from '@/components/AnalyticsPage';
+import UserManagementPage from '@/components/UserManagementPage';
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -24,16 +26,20 @@ export default function AdminPage() {
         return <Products />;
       case 'orders':
         return <Orders />;
-      case 'customers':
-        return <Customers />;
-      case 'inventory':
-        return <Inventory />;
-       case 'settings':
-         return <Settings />;
-         case 'user':
-         return <Login />;
-         case 'attributes':
-         return <AttributeManager />;
+      // case 'customers':
+      //   return <Customers />;
+      // case 'inventory':
+      //   return <Inventory />;
+      // case 'settings':
+      //   return <Settings />;
+      case 'user': // Corresponds to { id: 'user', label: 'User Login' }
+        return <Login />;
+      case 'attributes':
+        return <AttributeManager />;
+      case 'analytics':
+        return <AnalyticsPage />;
+      case 'management': // Corresponds to { id: 'management', label: 'User Management' }
+        return <UserManagementPage />;
       default:
         return <Products />;
     }

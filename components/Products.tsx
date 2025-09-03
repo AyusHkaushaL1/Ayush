@@ -1129,7 +1129,6 @@ interface ProductApiResponse {
   };
 }
 
-
 const Products: FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -2442,88 +2441,91 @@ const handleClearFilters = () => {
 
   return (
     
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Jewelry Products</h1>
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2"></div>
-          <button
-            onClick={() => {
-              setShowAddModal(true);
-              setEditingProduct(null);
-              setNewProduct(getInitialNewProductState());
-            }}
-            className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors flex items-center space-x-2"
-          >
-            <Plus className="h-5 w-5" />
-            <span>Add Jewelry Product</span>
-          </button>
-        </div>
-        {/* --- NEW FILTER BAR --- */}
-      <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            {/* Search Input */}
-            <div className="lg:col-span-2">
-                <label htmlFor="search-product" className="block text-sm font-medium text-gray-700 mb-1">Search</label>
-                <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Search className="h-5 w-5 text-gray-400" />
-                    </div>
-                    <input
-                        type="text"
-                        id="search-product"
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-amber-500 focus:border-amber-500"
-                        placeholder="Search by name, SKU..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                </div>
-            </div>
+<div className="space-y-6">
+  {/* First Line - Just the Title */}
+  <div>
+    <h1 className="text-2xl font-bold text-gray-900">Jewelry Products</h1>
+  </div>
 
-            {/* Category Filter */}
-            <div>
-                <label htmlFor="filter-category" className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                <select id="filter-category" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                    <option value="All">All Categories</option>
-                    {apiCategories.map(cat => <option key={cat.id} value={cat.title}>{cat.title}</option>)}
-                </select>
-            </div>
-
-            {/* SubCategory Filter */}
-            <div>
-                <label htmlFor="filter-subcategory" className="block text-sm font-medium text-gray-700 mb-1">Subcategory</label>
-                <select id="filter-subcategory" value={selectedSubCategory} onChange={(e) => setSelectedSubCategory(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg" disabled={selectedCategory === 'All'}>
-                    <option value="All">All Subcategories</option>
-                    {/* --- THIS IS THE CORRECTED LINE --- */}
-                    {apiSubcategories.map(sub => (
-                        <option key={sub.id} value={sub.title}>{sub.title}</option>
-                    ))}
-                </select>
-            </div>
-            
-            {/* Visibility Filter */}
-            <div>
-                <label htmlFor="filter-visibility" className="block text-sm font-medium text-gray-700 mb-1">Visibility</label>
-                <select id="filter-visibility" value={filterVisibility} onChange={(e) => setFilterVisibility(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                    <option value="all">All Visibilities</option>
-                    <option value="Active">Active</option>
-                    <option value="Low Stock">Low Stock</option>
-                    <option value="Out of Stock">Out of Stock</option>
-                </select>
-            </div>
+  {/* Second Line - Filter Bar with Add Product Button */}
+  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+    <div className="flex items-center justify-between mb-4">
+      <h2 className="text-lg font-medium text-gray-800">Filter Products</h2>
+      <button
+        onClick={() => {
+          setShowAddModal(true);
+          setEditingProduct(null);
+          setNewProduct(getInitialNewProductState());
+        }}
+        className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors flex items-center space-x-2"
+      >
+        <Plus className="h-5 w-5" />
+        <span>Add Jewelry Product</span>
+      </button>
+    </div>
+    
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* Search Input */}
+      <div className="lg:col-span-2">
+        <label htmlFor="search-product" className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="h-5 w-5 text-gray-400" />
+          </div>
+          <input
+            type="text"
+            id="search-product"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-amber-500 focus:border-amber-500"
+            placeholder="Search by name, SKU..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
-        <div className="mt-4 flex justify-end">
-            <button
-                onClick={handleClearFilters}
-                className="text-sm text-gray-600 hover:text-gray-900 font-medium flex items-center space-x-1"
-            >
-                <X className="h-4 w-4" />
-                <span>Clear Filters</span>
-            </button>
-        </div>
-      </div>
-    {/* --- END OF NEW FILTER BAR & REPLACEMENT SECTION --- */}
       </div>
+
+      {/* Category Filter */}
+      <div>
+        <label htmlFor="filter-category" className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+        <select id="filter-category" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+          <option value="All">All Categories</option>
+          {apiCategories.map(cat => <option key={cat.id} value={cat.title}>{cat.title}</option>)}
+        </select>
+      </div>
+
+      {/* SubCategory Filter */}
+      <div>
+        <label htmlFor="filter-subcategory" className="block text-sm font-medium text-gray-700 mb-1">Subcategory</label>
+        <select id="filter-subcategory" value={selectedSubCategory} onChange={(e) => setSelectedSubCategory(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg" disabled={selectedCategory === 'All'}>
+          <option value="All">All Subcategories</option>
+          {apiSubcategories.map(sub => (
+            <option key={sub.id} value={sub.title}>{sub.title}</option>
+          ))}
+        </select>
+      </div>
+      
+      {/* Visibility Filter */}
+      <div>
+        <label htmlFor="filter-visibility" className="block text-sm font-medium text-gray-700 mb-1">Visibility</label>
+        <select id="filter-visibility" value={filterVisibility} onChange={(e) => setFilterVisibility(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+          <option value="all">All Visibilities</option>
+          <option value="Active">Active</option>
+          <option value="Low Stock">Low Stock</option>
+          <option value="Out of Stock">Out of Stock</option>
+        </select>
+      </div>
+    </div>
+    
+    <div className="mt-4 flex justify-end">
+      <button
+        onClick={handleClearFilters}
+        className="text-sm text-gray-600 hover:text-gray-900 font-medium flex items-center space-x-1"
+      >
+        <X className="h-4 w-4" />
+        <span>Clear Filters</span>
+      </button>
+    </div>
+  </div>
+
       
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
