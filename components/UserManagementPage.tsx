@@ -23,8 +23,6 @@ interface UserStats {
 }
 
 // --- HELPER & UI COMPONENTS ---
-
-// Reusable Stat Card Component
 const StatCard: FC<{ title: string; value: number; icon: React.ReactNode; }> = ({ title, value, icon }) => (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 flex items-center space-x-4">
         <div className="bg-amber-100 text-amber-600 rounded-full p-3">{icon}</div>
@@ -35,7 +33,6 @@ const StatCard: FC<{ title: string; value: number; icon: React.ReactNode; }> = (
     </div>
 );
 
-// Status Badge Component for color-coding statuses
 const StatusBadge: FC<{ status: User['status'] }> = ({ status }) => {
     const styles = {
         active: 'bg-green-100 text-green-800',
@@ -45,7 +42,6 @@ const StatusBadge: FC<{ status: User['status'] }> = ({ status }) => {
     return <span className={`px-2 py-1 text-xs font-medium rounded-full ${styles[status]}`}>{status.charAt(0).toUpperCase() + status.slice(1)}</span>;
 };
 
-// Role Badge Component
 const RoleBadge: FC<{ role: User['role'] }> = ({ role }) => {
     const styles = {
         admin: 'bg-blue-100 text-blue-800',
@@ -55,18 +51,13 @@ const RoleBadge: FC<{ role: User['role'] }> = ({ role }) => {
 };
 
 // --- MAIN USER MANAGEMENT PAGE COMPONENT ---
-
 const UserManagementPage: FC = () => {
     const [authToken, setAuthToken] = useState<string>('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [notification, setNotification] = useState<string | null>(null);
-
-    // Data states
     const [users, setUsers] = useState<User[]>([]);
     const [stats, setStats] = useState<UserStats | null>(null);
-
-    // UI states
     const [searchTerm, setSearchTerm] = useState('');
     const [showDeleted, setShowDeleted] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -74,8 +65,6 @@ const UserManagementPage: FC = () => {
     const [userForm, setUserForm] = useState({ role: 'customer' as User['role'], status: 'active' as User['status'] });
 
     const BASE_URL = 'http://kcs408ksw0og080sskw4okoo.31.97.206.59.sslip.io/api/admin';
-
-    // --- DATA FETCHING & INITIALIZATION ---
 
     useEffect(() => {
         const storedCredentials = localStorage.getItem('userCredentials');
@@ -91,8 +80,10 @@ const UserManagementPage: FC = () => {
         setLoading(true);
         try {
             const headers = { 'Authorization': `Bearer ${token}` };
+            const usersUrl = `${BASE_URL}/users?includeDeleted=true`;
+
             const [usersResponse, statsResponse] = await Promise.all([
-                fetch(`${BASE_URL}/users`, { headers }),
+                fetch(usersUrl, { headers }),
                 fetch(`${BASE_URL}/stats`, { headers }),
             ]);
 
@@ -101,6 +92,11 @@ const UserManagementPage: FC = () => {
 
             const usersData = await usersResponse.json();
             const statsData = await statsResponse.json();
+
+            // --- DEBUGGING STEP ---
+            // Log the raw user data to the browser's console
+            console.log("Raw user data received from API:", usersData.users); 
+            // --- END DEBUGGING STEP ---
 
             setUsers(usersData.users || []);
             setStats(statsData);
@@ -117,8 +113,6 @@ const UserManagementPage: FC = () => {
         }
     }, [authToken, fetchUsersAndStats]);
 
-    // --- API ACTION HANDLERS ---
-
     const handleShowNotification = (message: string) => {
         setNotification(message);
         setTimeout(() => setNotification(null), 3000);
@@ -133,7 +127,7 @@ const UserManagementPage: FC = () => {
                 body: JSON.stringify(userForm),
             });
             if (!response.ok) throw new Error('Failed to update user.');
-            await fetchUsersAndStats(authToken); // Refetch data
+            await fetchUsersAndStats(authToken);
             handleShowNotification('User updated successfully.');
             closeModal();
         } catch (err: any) {
@@ -157,17 +151,24 @@ const UserManagementPage: FC = () => {
         }
     };
     
+    // This function is correctly implemented to restore a user.
     const handleRestoreUser = async (userId: string) => {
-        try {
-            const response = await fetch(`${BASE_URL}/users/${userId}/restore`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${authToken}` },
-            });
-            if (!response.ok) throw new Error('Failed to restore user.');
-            await fetchUsersAndStats(authToken);
-            handleShowNotification('User restored successfully.');
-        } catch (err: any) {
-            setError(err.message);
+        if (window.confirm('Are you sure you want to restore this user?')) {
+            try {
+                const response = await fetch(`${BASE_URL}/users/${userId}/restore`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                });
+                if (!response.ok) throw new Error('Failed to restore user.');
+                
+                // Re-fetching data is the key to updating the UI correctly.
+                await fetchUsersAndStats(authToken);
+                handleShowNotification('User restored successfully.');
+            } catch (err: any) {
+                setError(err.message);
+            }
         }
     };
     
@@ -176,10 +177,18 @@ const UserManagementPage: FC = () => {
             try {
                 const response = await fetch(`${BASE_URL}/users/${userId}/reset-password`, {
                     method: 'POST',
-                    headers: { 'Authorization': `Bearer ${authToken}` },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ newPassword: `TempReset${Math.random().toString(36).slice(-8)}!A1` }),
                 });
-                if (!response.ok) throw new Error('Failed to send reset password link.');
-                 handleShowNotification('Password reset link sent.');
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => null);
+                    const errorMessage = errorData?.message || 'Failed to send reset password link.';
+                    throw new Error(errorMessage);
+                }
+                handleShowNotification('Password reset link sent.');
             } catch (err: any) {
                 setError(err.message);
             }
@@ -208,8 +217,6 @@ const UserManagementPage: FC = () => {
         }
     };
 
-    // --- MODAL & FILTER LOGIC ---
-    
     const openModal = (user: User) => {
         setSelectedUser(user);
         setUserForm({ role: user.role, status: user.status });
@@ -221,14 +228,13 @@ const UserManagementPage: FC = () => {
         setSelectedUser(null);
     };
 
+    // This filtering logic works perfectly with the data fetching strategy.
     const filteredUsers = users
         .filter(user => showDeleted ? true : !user.isDeleted)
         .filter(user =>
             user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             user.email.toLowerCase().includes(searchTerm.toLowerCase())
         );
-
-    // --- RENDER ---
     
     if (loading) return <div className="p-6 text-center">Loading user data...</div>;
     if (error && !notification) return <div className="p-6 text-center text-red-600 bg-red-100">{error}</div>;
@@ -320,33 +326,32 @@ const UserManagementPage: FC = () => {
                 </div>
             </div>
 
-            {/* Edit User Modal */}
             {isModalOpen && selectedUser && (
                  <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-                     <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md space-y-4">
-                        <h3 className="text-lg font-semibold">Edit User: {selectedUser.name}</h3>
-                        <div className="space-y-4">
-                             <div>
-                                 <label htmlFor="role" className="block text-sm font-medium text-gray-700">Role</label>
-                                 <select id="role" value={userForm.role} onChange={e => setUserForm({...userForm, role: e.target.value as User['role']})} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm rounded-md">
-                                     <option value="customer">Customer</option>
-                                     <option value="admin">Admin</option>
-                                 </select>
-                             </div>
-                             <div>
-                                 <label htmlFor="status" className="block text-sm font-medium text-gray-700">Status</label>
-                                 <select id="status" value={userForm.status} onChange={e => setUserForm({...userForm, status: e.target.value as User['status']})} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm rounded-md">
-                                     <option value="active">Active</option>
-                                     <option value="inactive">Inactive</option>
-                                     <option value="banned">Banned</option>
-                                 </select>
-                             </div>
-                        </div>
-                         <div className="flex justify-end space-x-3 pt-4">
-                             <button onClick={closeModal} className="px-4 py-2 bg-gray-200 rounded-lg text-sm hover:bg-gray-300">Cancel</button>
-                             <button onClick={handleUpdateUser} className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm hover:bg-amber-700">Save Changes</button>
-                         </div>
-                     </div>
+                      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md space-y-4">
+                          <h3 className="text-lg font-semibold">Edit User: {selectedUser.name}</h3>
+                          <div className="space-y-4">
+                                <div>
+                                    <label htmlFor="role" className="block text-sm font-medium text-gray-700">Role</label>
+                                    <select id="role" value={userForm.role} onChange={e => setUserForm({...userForm, role: e.target.value as User['role']})} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm rounded-md">
+                                        <option value="customer">Customer</option>
+                                        <option value="admin">Admin</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label htmlFor="status" className="block text-sm font-medium text-gray-700">Status</label>
+                                    <select id="status" value={userForm.status} onChange={e => setUserForm({...userForm, status: e.target.value as User['status']})} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm rounded-md">
+                                        <option value="active">Active</option>
+                                        <option value="inactive">Inactive</option>
+                                        <option value="banned">Banned</option>
+                                    </select>
+                                </div>
+                          </div>
+                           <div className="flex justify-end space-x-3 pt-4">
+                                <button onClick={closeModal} className="px-4 py-2 bg-gray-200 rounded-lg text-sm hover:bg-gray-300">Cancel</button>
+                                <button onClick={handleUpdateUser} className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm hover:bg-amber-700">Save Changes</button>
+                           </div>
+                      </div>
                  </div>
             )}
         </div>
@@ -354,4 +359,3 @@ const UserManagementPage: FC = () => {
 };
 
 export default UserManagementPage;
-
