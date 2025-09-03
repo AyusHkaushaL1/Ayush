@@ -2730,214 +2730,398 @@ const handleClearFilters = () => {
         handleVariantDiamondOptionChange={handleVariantDiamondOptionChange}
       />
 
-      {viewingProduct && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900">Product Details</h2>
-                <button onClick={() => setViewingProduct(null)} className="text-gray-400 hover:text-gray-600">
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-            </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div>
-                  {viewingProduct.media && viewingProduct.media.length > 0 ? (
-                    <div className="space-y-4">
-                      <div className="relative">
-                        {viewingProduct.media[selectedMediaIndex]?.type === 'video' ? (
-                          <video
-                            src={viewingProduct.media[selectedMediaIndex].url}
-                            className="w-full h-64 object-cover rounded-lg"
-                            controls
-                            key={viewingProduct.media[selectedMediaIndex].id}
-                          />
+{viewingProduct && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-gray-900">Product Details</h2>
+          <button onClick={() => setViewingProduct(null)} className="text-gray-400 hover:text-gray-600">
+            <X className="h-6 w-6" />
+          </button>
+        </div>
+      </div>
+      <div className="p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Media Section */}
+          <div>
+            {viewingProduct.media && viewingProduct.media.length > 0 ? (
+              <div className="space-y-4">
+                <div className="relative">
+                  {viewingProduct.media[selectedMediaIndex]?.type === 'video' ? (
+                    <video
+                      src={viewingProduct.media[selectedMediaIndex].url}
+                      className="w-full h-64 object-cover rounded-lg"
+                      controls
+                      key={viewingProduct.media[selectedMediaIndex].id}
+                    />
+                  ) : (
+                    <img
+                      src={viewingProduct.media[selectedMediaIndex]?.url || viewingProduct.media[0].url}
+                      alt={viewingProduct.name}
+                      className="w-full h-64 object-cover rounded-lg cursor-zoom-in"
+                      onClick={() => {
+                        console.log('Image clicked for fullscreen view');
+                      }}
+                    />
+                  )}
+
+                  {viewingProduct.media[selectedMediaIndex]?.type === 'gif' && (
+                    <div className="absolute top-2 left-2 bg-purple-500 text-white text-xs px-2 py-1 rounded">
+                      GIF
+                    </div>
+                  )}
+                  {viewingProduct.media[selectedMediaIndex]?.type === '3d_model' && (
+                    <div className="absolute top-2 left-2 bg-teal-500 text-white text-xs px-2 py-1 rounded">
+                      3D Model
+                    </div>
+                  )}
+
+                  {viewingProduct.media.length > 1 && (
+                    <>
+                      <button
+                        onClick={() => setSelectedMediaIndex(prev =>
+                          prev === 0 ? viewingProduct.media!.length - 1 : prev - 1
+                        )}
+                        className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-opacity"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => setSelectedMediaIndex(prev =>
+                          prev === viewingProduct.media!.length - 1 ? 0 : prev + 1
+                        )}
+                        className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-opacity"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </>
+                  )}
+
+                  {viewingProduct.media.length > 1 && (
+                    <div className="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                      {selectedMediaIndex + 1} / {viewingProduct.media.length}
+                    </div>
+                  )}
+                </div>
+
+                {viewingProduct.media.length > 1 && (
+                  <div className="grid grid-cols-6 gap-2">
+                    {viewingProduct.media.map((media, index) => (
+                      <div
+                        key={media.id}
+                        className={`relative cursor-pointer border-2 rounded ${
+                          index === selectedMediaIndex
+                            ? 'border-amber-500 ring-2 ring-amber-200'
+                            : 'border-gray-200 hover:border-amber-300'
+                        }`}
+                        onClick={() => setSelectedMediaIndex(index)}
+                      >
+                        {media.type === 'video' ? (
+                          <div className="relative">
+                            <video
+                              src={media.url}
+                              className="w-full h-16 object-cover rounded"
+                              muted
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded">
+                              <Play className="h-3 w-3 text-white" />
+                            </div>
+                          </div>
                         ) : (
                           <img
-                            src={viewingProduct.media[selectedMediaIndex]?.url || viewingProduct.media[0].url}
-                            alt={viewingProduct.name}
-                            className="w-full h-64 object-cover rounded-lg cursor-zoom-in"
-                            onClick={() => {
-                              console.log('Image clicked for fullscreen view');
-                            }}
+                            src={media.url}
+                            alt={`Thumbnail ${index + 1}`}
+                            className="w-full h-16 object-cover rounded"
                           />
                         )}
-
-                        {viewingProduct.media[selectedMediaIndex]?.type === 'gif' && (
-                          <div className="absolute top-2 left-2 bg-purple-500 text-white text-xs px-2 py-1 rounded">
+                        {media.type === 'gif' && (
+                          <div className="absolute top-0 left-0 bg-purple-500 text-white text-xs px-1 rounded">
                             GIF
                           </div>
                         )}
-                        {viewingProduct.media[selectedMediaIndex]?.type === '3d_model' && (
-                          <div className="absolute top-2 left-2 bg-teal-500 text-white text-xs px-2 py-1 rounded">
-                            3D Model
+                        {media.type === '3d_model' && (
+                          <div className="absolute top-0 left-0 bg-teal-500 text-white text-xs px-1 rounded">
+                            3D
                           </div>
                         )}
-
-                        {viewingProduct.media.length > 1 && (
-                          <>
-                            <button
-                              onClick={() => setSelectedMediaIndex(prev =>
-                                prev === 0 ? viewingProduct.media!.length - 1 : prev - 1
-                              )}
-                              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-opacity"
-                            >
-                              <ChevronLeft className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => setSelectedMediaIndex(prev =>
-                                prev === viewingProduct.media!.length - 1 ? 0 : prev + 1
-                              )}
-                              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-opacity"
-                            >
-                              <ChevronRight className="h-4 w-4" />
-                            </button>
-                          </>
-                        )}
-
-                        {viewingProduct.media.length > 1 && (
-                          <div className="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
-                            {selectedMediaIndex + 1} / {viewingProduct.media.length}
-                          </div>
+                        {index === selectedMediaIndex && (
+                          <div className="absolute inset-0 border-2 border-amber-500 rounded bg-amber-500 bg-opacity-20"></div>
                         )}
                       </div>
-
-                      {viewingProduct.media.length > 1 && (
-                        <div className="grid grid-cols-6 gap-2">
-                          {viewingProduct.media.map((media, index) => (
-                            <div
-                              key={media.id}
-                              className={`relative cursor-pointer border-2 rounded ${
-                                index === selectedMediaIndex
-                                  ? 'border-amber-500 ring-2 ring-amber-200'
-                                  : 'border-gray-200 hover:border-amber-300'
-                              }`}
-                              onClick={() => setSelectedMediaIndex(index)}
-                            >
-                              {media.type === 'video' ? (
-                                <div className="relative">
-                                  <video
-                                    src={media.url}
-                                    className="w-full h-16 object-cover rounded"
-                                    muted
-                                  />
-                                  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded">
-                                    <Play className="h-3 w-3 text-white" />
-                                  </div>
-                                </div>
-                              ) : (
-                                <img
-                                  src={media.url}
-                                  alt={`Thumbnail ${index + 1}`}
-                                  className="w-full h-16 object-cover rounded"
-                                />
-                              )}
-                              {media.type === 'gif' && (
-                                <div className="absolute top-0 left-0 bg-purple-500 text-white text-xs px-1 rounded">
-                                  GIF
-                                </div>
-                              )}
-                              {media.type === '3d_model' && (
-                                <div className="absolute top-0 left-0 bg-teal-500 text-white text-xs px-1 rounded">
-                                  3D
-                                </div>
-                              )}
-                              {index === selectedMediaIndex && (
-                                <div className="absolute inset-0 border-2 border-amber-500 rounded bg-amber-500 bg-opacity-20"></div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <img
-                      src={viewingProduct.images[0]}
-                      alt={viewingProduct.name}
-                      className="w-full h-64 object-cover rounded-lg"
-                    />
-                  )}
-                </div>
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-2xl font-bold text-gray-900">{viewingProduct.name}</h3>
-                    <p className="text-gray-600">SKU: {viewingProduct.variants[0]?.sku}</p>
+                    ))}
                   </div>
-                  <div className="flex items-center space-x-4">
-                    <span className="text-2xl font-bold text-amber-600">
-                      ₹{viewingProduct.variants[0]?.price.toLocaleString()}
+                )}
+              </div>
+            ) : (
+              <img
+                src={viewingProduct.images[0]}
+                alt={viewingProduct.name}
+                className="w-full h-64 object-cover rounded-lg"
+              />
+            )}
+          </div>
+
+          {/* Product Details Section */}
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-2xl font-bold text-gray-900">{viewingProduct.name}</h3>
+              <div className="text-gray-600 mt-1">
+                <div className="text-sm">Category: {viewingProduct.category} • {viewingProduct.subCategory}</div>
+                <div className="text-sm">Collection: {viewingProduct.collection}</div>
+                {viewingProduct.description && (
+                  <div className="text-sm mt-2 text-gray-700">{viewingProduct.description}</div>
+                )}
+              </div>
+            </div>
+
+            {/* Basic Product Information */}
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="font-medium text-gray-700">Gender:</span>
+                <p className="text-gray-600">{viewingProduct.gender}</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Occasion:</span>
+                <p className="text-gray-600">{viewingProduct.occasion || 'N/A'}</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Total Stock:</span>
+                <p className="text-gray-600">{viewingProduct.variants.reduce((sum, v) => sum + v.stock, 0)} units</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Status:</span>
+                <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(viewingProduct.status)}`}>
+                  {viewingProduct.status}
+                </span>
+              </div>
+            </div>
+
+            {/* Certifications */}
+            <div>
+              <span className="font-medium text-gray-700">Certifications:</span>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {viewingProduct.diamondCertification && (
+                  <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                    {viewingProduct.diamondCertification}
+                  </span>
+                )}
+                {viewingProduct.goldCertification && (
+                  <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                    {viewingProduct.goldCertification}
+                  </span>
+                )}
+                {viewingProduct.warranty && (
+                  <div className="text-xs text-gray-500">{viewingProduct.warranty} warranty</div>
+                )}
+              </div>
+            </div>
+
+            {/* Customization Info */}
+            {viewingProduct.customizable && (
+              <div className="flex items-center space-x-2">
+                <Settings className="h-4 w-4 text-blue-600" />
+                <span className="text-sm text-blue-600 font-medium">Customizable</span>
+              </div>
+            )}
+
+            {/* Tags */}
+            {viewingProduct.tags && viewingProduct.tags.length > 0 && (
+              <div>
+                <span className="font-medium text-gray-700">Tags:</span>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {viewingProduct.tags.map((tag, index) => (
+                    <span key={index} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
+                      {tag}
                     </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="font-medium text-gray-700">Category:</span>
-                      <p className="text-gray-600">{viewingProduct.category}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Metal:</span>
-                      <p className="text-gray-600">{viewingProduct.metalQuality} {viewingProduct.metalColor}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Stock:</span>
-                      <p className="text-gray-600">{viewingProduct.variants.reduce((sum, v) => sum + v.stock, 0)} units</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Weight:</span>
-                      <p className="text-gray-600">{viewingProduct.metalGrossWeight}g</p>
-                    </div>
-                  </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
 
-                  {viewingProduct.diamondOptions && viewingProduct.diamondOptions.length > 0 && (
+        {/* All Variants Section */}
+        <div className="mt-8">
+          <h4 className="text-lg font-semibold text-gray-900 mb-4 border-t pt-6">
+            Product Variants ({viewingProduct.variants.length})
+          </h4>
+          
+          {viewingProduct.variants.length === 1 ? (
+            /* Single Variant - Full Details */
+            <div className="bg-gray-50 rounded-lg p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="space-y-4">
+                  <h5 className="font-medium text-gray-900">Basic Information</h5>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="font-medium">SKU:</span> {viewingProduct.variants[0].sku}</div>
+                    <div><span className="font-medium">Price:</span> ₹{viewingProduct.variants[0].price.toLocaleString()}</div>
+                    <div><span className="font-medium">Stock:</span> {viewingProduct.variants[0].stock} units</div>
                     <div>
-                      <span className="font-medium text-gray-700">Diamond Options:</span>
-                      <div className="mt-2 space-y-2">
-                        {viewingProduct.diamondOptions.map((diamond, index) => (
-                          <div key={diamond.id} className="p-3 bg-purple-50 rounded-lg border border-purple-200">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-sm font-medium text-purple-800">
-                                Option {index + 1}
-                                {diamond.isMain && (
-                                  <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
-                                    Main
-                                  </span>
-                                )}
-                              </span>
-                            </div>
-                            <div className="text-sm text-gray-600">
-                              {diamond.count} × {diamond.shape} {diamond.quality} diamond{diamond.count > 1 ? 's' : ''}, {diamond.weight}ct total
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div>
-                    <span className="font-medium text-gray-700">Certifications:</span>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                        {viewingProduct.diamondCertification}
+                      <span className="font-medium">Status:</span>
+                      <span className={`ml-2 inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                        viewingProduct.variants[0].stock > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                      }`}>
+                        {viewingProduct.variants[0].stock > 0 ? 'In Stock' : 'Out of Stock'}
                       </span>
-                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                        {viewingProduct.goldCertification}
-                      </span>
-                      <div className="text-xs text-gray-500">{viewingProduct.warranty} warranty</div>
                     </div>
                   </div>
-                  {viewingProduct.customizable && (
-                    <div className="flex items-center space-x-2">
-                      <Settings className="h-4 w-4 text-blue-600" />
-                      <span className="text-sm text-blue-600 font-medium">Customizable</span>
-                    </div>
-                  )}
+                </div>
+
+                <div className="space-y-4">
+                  <h5 className="font-medium text-gray-900">Metal Specifications</h5>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="font-medium">Type:</span> {viewingProduct.variants[0].metalType}</div>
+                    <div><span className="font-medium">Quality:</span> {viewingProduct.variants[0].metalQuality}</div>
+                    <div><span className="font-medium">Color:</span> {viewingProduct.variants[0].metalColor}</div>
+                    <div><span className="font-medium">Weight:</span> {viewingProduct.variants[0].metalGrossWeight}g</div>
+                    <div><span className="font-medium">Band Width:</span> {viewingProduct.variants[0].bandWidth}mm</div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h5 className="font-medium text-gray-900">Diamond Specifications</h5>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="font-medium">Shape:</span> {viewingProduct.variants[0].shape}</div>
+                    <div><span className="font-medium">Total Weight:</span> {viewingProduct.variants[0].diamondWeight}ct</div>
+                    <div><span className="font-medium">Clarity:</span> {viewingProduct.variants[0].stoneClarity}</div>
+                    <div><span className="font-medium">Cut:</span> {viewingProduct.variants[0].stoneCut}</div>
+                    <div><span className="font-medium">Color:</span> {viewingProduct.variants[0].diamondTone}</div>
+                    <div><span className="font-medium">Total Diamonds:</span> {viewingProduct.variants[0].totalDiamonds}</div>
+                    <div><span className="font-medium">Setting:</span> {viewingProduct.variants[0].settingType}</div>
+                    {viewingProduct.variants[0].sideStones && (
+                      <div><span className="font-medium">Side Stones:</span> {viewingProduct.variants[0].sideStones}</div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          ) : (
+            /* Multiple Variants - Tabular View */
+            <div className="space-y-4">
+              <div className="grid gap-4">
+                {viewingProduct.variants.map((variant, index) => (
+                  <div key={variant.id} className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                    <div className="flex justify-between items-center mb-4">
+                      <h5 className="text-lg font-semibold text-gray-900">Variant {index + 1}</h5>
+                      <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${
+                        variant.stock > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                      }`}>
+                        {variant.stock > 0 ? 'In Stock' : 'Out of Stock'}
+                      </span>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                      <div className="space-y-3">
+                        <h6 className="font-medium text-gray-900 text-sm">Basic Info</h6>
+                        <div className="space-y-1 text-sm">
+                          <div><span className="font-medium">SKU:</span> {variant.sku}</div>
+                          <div><span className="font-medium">Price:</span> ₹{variant.price.toLocaleString()}</div>
+                          <div><span className="font-medium">Stock:</span> {variant.stock}</div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <h6 className="font-medium text-gray-900 text-sm">Metal Details</h6>
+                        <div className="space-y-1 text-sm">
+                          <div><span className="font-medium">Type:</span> {variant.metalType || 'N/A'}</div>
+                          <div><span className="font-medium">Quality:</span> {variant.metalQuality || 'N/A'}</div>
+                          <div><span className="font-medium">Color:</span> {variant.metalColor || 'N/A'}</div>
+                          <div><span className="font-medium">Weight:</span> {variant.metalGrossWeight}g</div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <h6 className="font-medium text-gray-900 text-sm">Diamond Details</h6>
+                        <div className="space-y-1 text-sm">
+                          <div><span className="font-medium">Shape:</span> {variant.shape || 'N/A'}</div>
+                          <div><span className="font-medium">Weight:</span> {variant.diamondWeight}ct</div>
+                          <div><span className="font-medium">Clarity:</span> {variant.stoneClarity || 'N/A'}</div>
+                          <div><span className="font-medium">Cut:</span> {variant.stoneCut || 'N/A'}</div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <h6 className="font-medium text-gray-900 text-sm">Specifications</h6>
+                        <div className="space-y-1 text-sm">
+                          <div><span className="font-medium">Color:</span> {variant.diamondTone || 'N/A'}</div>
+                          <div><span className="font-medium">Total Stones:</span> {variant.totalDiamonds}</div>
+                          <div><span className="font-medium">Band Width:</span> {variant.bandWidth}mm</div>
+                          <div><span className="font-medium">Setting:</span> {variant.settingType || 'N/A'}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {variant.sideStones && (
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <div className="text-sm">
+                          <span className="font-medium">Side Stones:</span> {variant.sideStones}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Variant Diamond Options */}
+                    {variant.diamondOptions && variant.diamondOptions.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <h6 className="font-medium text-gray-900 text-sm mb-2">Diamond Options</h6>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {variant.diamondOptions.map((diamond, dIndex) => (
+                            <div key={diamond.id} className="p-3 bg-white rounded border border-purple-200">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-sm font-medium text-purple-800">
+                                  Option {dIndex + 1}
+                                  {diamond.isMain && (
+                                    <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                                      Main
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                {diamond.count} × {diamond.shape} {diamond.quality} diamond{diamond.count > 1 ? 's' : ''}, {diamond.weight}ct total
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Diamond Options at Product Level */}
+          {viewingProduct.diamondOptions && viewingProduct.diamondOptions.length > 0 && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <h5 className="font-medium text-gray-900 mb-3">Product-Level Diamond Options</h5>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {viewingProduct.diamondOptions.map((diamond, index) => (
+                  <div key={diamond.id} className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium text-purple-800">
+                        Option {index + 1}
+                        {diamond.isMain && (
+                          <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                            Main
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {diamond.count} × {diamond.shape} {diamond.quality} diamond{diamond.count > 1 ? 's' : ''}, {diamond.weight}ct total
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   );
 };
