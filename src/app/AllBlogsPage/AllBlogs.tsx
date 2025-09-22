@@ -1,38 +1,9 @@
 "use client";
 import React, { useState } from "react";
 import NewsLetter from "./NewsLetter";
-
-const blogs = [
-  {
-    id: 1,
-    title: "Lab-Grown Diamonds in India: 2025 Buyer’s Guide",
-    date: "01 Sep, 2025",
-    image:
-      "https://www.candere.com/media/mageplaza/blog/post/Blog---Banner.jpg",
-  },
-  {
-    id: 2,
-    title:
-      "Why a Solitaire Engagement Ring Is the Perfect Choice for Your Proposal",
-    date: "11 Jul, 2025",
-    image:
-      "https://res2.yourwebsite.life/site/60700cd22f84ad002129b2f1/preview1600_1000",
-  },
-  {
-    id: 3,
-    title: "Yellow Gold Diamond Engagement Rings: Top Styles for 2025",
-    date: "10 Jul, 2025",
-    image:
-      "https://themewagon.com/wp-content/uploads/2018/08/Blanca-free-HTML5-personal-website-template.jpg",
-  },
-  {
-    id: 4,
-    title: "Where to Buy Promise Rings for Couples – Best Place & Tips",
-    date: "09 Jul, 2025",
-    image:
-      "https://images-wixmp-530a50041672c69d335ba4cf.wixmp.com/templates/image/8986240a850fd42b7d259e3469225816bf72748c787dd15b78ba94e807611e941584443523109.jpg",
-  },
-];
+import Customer from "./Customer";
+import Footer from "./Footer";
+import { blogData } from "../Data/blogData";
 
 interface AllBlogsProps {
   setShowAllBlogs: (value: boolean) => void;
@@ -41,21 +12,35 @@ interface AllBlogsProps {
 const AllBlogs: React.FC<AllBlogsProps> = ({ setShowAllBlogs }) => {
   const [search, setSearch] = useState("");
 
-  const filteredBlogs = blogs.filter((blog) =>
+  const filteredBlogs = blogData.filter((blog) =>
     blog.title.toLowerCase().includes(search.toLowerCase())
   );
 
+  if (filteredBlogs.length === 0) {
+    return (
+      <div className="w-full p-8">
+        <button
+          onClick={() => setShowAllBlogs(false)}
+          className="px-6 py-2 bg-[#0a2e37] text-white rounded hover:bg-black transition mb-4"
+        >
+          ← Back
+        </button>
+        <p>No blogs found for "{search}"</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full bg-[#f4f2ec] py-10">
-      <div className="max-w-[1800px] mx-auto px-6 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
-        <div className="flex items-center gap-4 w-full md:w-auto">
+    <div className="w-full bg-[#f4f2ec]">
+      {/* Top Bar */}
+      <div className="max-w-[1800px] mx-28 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="flex -mx-10 mt-5 items-center gap-4 w-full md:w-auto">
           <button
             onClick={() => setShowAllBlogs(false)}
-            className="px-6 py-2 bg-gray-800 text-white rounded hover:bg-gray-700 transition"
+            className="px-6 py-2 bg-[#0a2e37] text-white rounded hover:bg-black transition"
           >
             ← Back
           </button>
-          <h1 className="text-3xl md:text-4xl font-bold">All Blogs</h1>
         </div>
 
         <div className="relative w-full md:w-[400px]">
@@ -72,7 +57,9 @@ const AllBlogs: React.FC<AllBlogsProps> = ({ setShowAllBlogs }) => {
         </div>
       </div>
 
-      <div className="max-w-[1800px] mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 px-0">
+      {/* Blog Layout */}
+      <div className="max-w-[1900px] mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 px-0">
+        {/* Big Left Blog */}
         <div className="lg:col-span-2">
           <div className="relative w-full h-[720px] overflow-hidden rounded-md">
             <img
@@ -89,8 +76,9 @@ const AllBlogs: React.FC<AllBlogsProps> = ({ setShowAllBlogs }) => {
           </div>
         </div>
 
+        {/* Right Small Blogs */}
         <div className="grid grid-rows-3 gap-6 h-[720px]">
-          {filteredBlogs.slice(1).map((blog) => (
+          {filteredBlogs.slice(1, 4).map((blog) => (
             <div
               key={blog.id}
               className="relative flex w-full h-full overflow-hidden rounded-md cursor-pointer group"
@@ -108,7 +96,17 @@ const AllBlogs: React.FC<AllBlogsProps> = ({ setShowAllBlogs }) => {
           ))}
         </div>
       </div>
-      <NewsLetter/>
+
+      {/* Sections */}
+      <div className="mt-16">
+        <Customer />
+      </div>
+      <div className="mt-16">
+        <NewsLetter />
+      </div>
+      <div className="mt-16">
+        <Footer />
+      </div>
     </div>
   );
 };

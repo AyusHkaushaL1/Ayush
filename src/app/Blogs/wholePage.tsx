@@ -9,6 +9,8 @@ interface WholePageProps {
 }
 
 const WholePage: React.FC<WholePageProps> = ({ setShowAllBlogs }) => {
+  const firstThreeBlogs = blogData.slice(0, 3);
+
   return (
     <div className="w-full min-h-screen px-6 md:px-12 py-16 bg-gray-50">
       <div className="text-center mb-16">
@@ -19,8 +21,9 @@ const WholePage: React.FC<WholePageProps> = ({ setShowAllBlogs }) => {
           ideas.
         </p>
       </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 w-full">
-        {blogData.map((blog) => (
+        {firstThreeBlogs.map((blog) => (
           <Card
             key={blog.id}
             image={blog.image}
@@ -30,10 +33,11 @@ const WholePage: React.FC<WholePageProps> = ({ setShowAllBlogs }) => {
           />
         ))}
       </div>
+
       <div className="flex justify-center mt-16">
         <button
           onClick={() => setShowAllBlogs(true)}
-          className="px-10 py-4 bg-blue-900 text-white text-lg shadow hover:bg-gray-800 transition"
+          className="px-10 py-4 bg-[#0a2e37] text-white text-lg shadow hover:bg-black transition"
         >
           Read Blogs
         </button>
